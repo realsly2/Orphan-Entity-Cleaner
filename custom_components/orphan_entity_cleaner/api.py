@@ -1,13 +1,19 @@
-# custom_components/orphan_entity_cleaner/api.py
 from __future__ import annotations
 
-from aiohttp import web
-from homeassistant.core import HomeAssistant
+from homeassistant.components.http import HomeAssistantView
+from homeassistant.core import HomeAssistant, Request
 
 from .const import DOMAIN, RESULTS_KEY
 
 
-async def async_results_handler(request: web.Request) -> web.Response:
-    hass: HomeAssistant = request.app["hass"]
-    results = hass.data.setdefault(DOMAIN, {}).get(RESULTS_KEY, [])
-    return web.json_response({"results": results})
+class OrphanEntityCleanerResultsView(HomeAssistantView):
+    url = "/api/orphan_entity_cleaner/results"
+    name = "api:orphan_entity_cleaner:results"
+    requires_auth = True
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        self.hass = hass
+
+    async def get(self, request: Request):
+        results = self.hass.data.get(DOMAIN, {}).get(RESULTS_KEY, [])
+        return self.json(results)

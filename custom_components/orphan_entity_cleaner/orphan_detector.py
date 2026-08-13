@@ -1,42 +1,37 @@
 # custom_components/orphan_entity_cleaner/orphan_detector.py
+
 from __future__ import annotations
 
 from typing import Any
 
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN, RESULTS_KEY
-
-def is_orphan_entity(entity: Any) -> bool:
-    orphaned_timestamp = getattr(entity, "orphaned_timestamp", None)
-    config_entry_id = getattr(entity, "config_entry_id", None)
-    device_id = getattr(entity, "device_id", None)
-    state = getattr(entity, "state", None)
-
-    if orphaned_timestamp:
-        return True
-
-    return state is None and config_entry_id is None and device_id is None
-
-async def async_scan_orphans(hass: HomeAssistant) -> list[dict[str, Any]]:
+def async_find_orphans(hass: HomeAssistant) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
 
-    entity_registry = hass.helpers.entity_registry.async_get(hass)
-    for entity_id, entry in entity_registry.entities.items():
-        if getattr(entry, "orphaned_timestamp", None) or (
-            entry.state is None and entry.config_entry_id is None and entry.device_id is None
-        ):
+    for entity_id, state in hass.states.async_all().items():
+        attrs = state.attributes or {}
+        config_entry_id = attrs.get("config_entry_id")
+        device_id = attrs.get("device_id")
+        orphaned_timestamp = attrs.get("orphaned_timestamp")
+
+        reason = None
+        if orphaned_timestamp:
+            reason = "orphaned_timestamp"
+        elif not state.state and not config_entry_id and not device_id:
+            reason = "no_state_no_config_entry_no_device"
+
+        if reason:
             results.append(
                 {
                     "entity_id": entity_id,
-                    "name": entry.original_name or entry.name or entity_id,
-                    "platform": entry.platform,
-                    "reason": "orphaned",
-                    "config_entry_id": entry.config_entry_id,
-                    "device_id": entry.device_id,
+                    "name": attrs.get("friendly_name", entity_id),
+                    "platform": attrs.get("platform", "unknown"),
+                    "reason": reason,
+                    "config_entry_id": config_entry_id,
+                    "device_id": device_id,
                 }
             )
 
     results.sort(key=lambda item: item["entity_id"])
-    hass.data.setdefault(DOMAIN, {})[RESULTS_KEY] = results
     return results

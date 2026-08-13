@@ -1,6 +1,8 @@
-from __future__ import annotations
+# custom_components/orphan_entity_cleaner/const.py
 
 DOMAIN = "orphan_entity_cleaner"
+NAME = "Orphan Entity Cleaner"
+VERSION = "0.2.2"
 
 PANEL_URL = "/orphan-entity-cleaner"
 PANEL_TITLE = "Orphan Entity Cleaner"

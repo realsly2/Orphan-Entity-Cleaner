@@ -4,7 +4,7 @@ from __future__ import annotations
 from homeassistant.components.frontend import async_register_built_in_panel
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN, PANEL_URL, PANEL_TITLE, PANEL_ICON
+from .const import PANEL_URL, PANEL_TITLE, PANEL_ICON
 from .panel_html import PANEL_HTML
 
 
@@ -18,3 +18,4 @@ async def async_register_panel(hass: HomeAssistant) -> None:
         require_admin=True,
         config={"url": PANEL_HTML, "title": PANEL_TITLE},
     )
+

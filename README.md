@@ -33,40 +33,27 @@ Before deleting entities, create a full backup of your Home Assistant configurat
 
 ### Installation
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=realsly2&repository=Orphan-Entity-Cleaner&category=integration)
-
-
-#### Via HACS (recommended)
-
+#### Option 1: Via HACS (recommended)
 1. Open HACS in Home Assistant.
-2. Click on "Integrations" and then the three dots (⋮) in the top right corner.
-3. Select "Custom repositories" and add this URL: https://github.com/realsly2/Orphan-Entity-Cleaner
+2. Click on "Integrations" → three dots (⋮) → "Custom repositories".
+3. Add this URL: https://github.com/realsly2/Orphan-Entity-Cleaner
 4. Select "Integration" as the category.
-5. Click "Install".
-6. Restart Home Assistant.
+5. Click "Install" and restart Home Assistant.
 
-#### Manual Installation
+#### Option 2: Manual Installation
+1. Download the custom_components/orphan_cleaner/ folder from this repository.
+2. Copy it into your Home Assistant custom_components/ directory.
+3. Add the following line to your configuration.yaml:
+   orphan_cleaner:
+4. Restart Home Assistant.
 
-1. Copy the custom_components/orphan_cleaner/ folder into your Home Assistant custom_components/ folder.
-2. Restart Home Assistant.
-3. Add the integration in Home Assistant (Configuration → Integrations → "+ Add Integration" → "Orphan Cleaner").
-   
-### Installation via configuration.yaml
-
-If you prefer manual installation without HACS, you can also install the integration by adding it to your `configuration.yaml`:
-
-1. Download the `custom_components/orphan_cleaner/` folder from the [GitHub repository](https://github.com/realsly2/Orphan-Entity-Cleaner) and copy it into your Home Assistant `custom_components/` directory.
-
-2. Add the following line to your `configuration.yaml`:
-
-```yaml
-orphan_cleaner:
+After the restart, you will find the Orphan Cleaner panel in your sidebar.
 
 ### Usage
 
-1. Open Orphan Cleaner from the Home Assistant sidebar (admin access required).
+1. Open Orphan Cleaner from the sidebar (admin access required).
 2. Click "Start Scan".
-3. Review the list of detected orphaned entities.
+3. Review the detected entities.
 4. Use search and filters to narrow down your selection.
 5. Select the entities you want to delete.
 6. Export or backup the results (optional but recommended).
@@ -75,7 +62,7 @@ orphan_cleaner:
 
 ### Detection Logic
 
-An entity is marked as orphaned if either orphaned_timestamp exists in its attributes, or both config_entry_id and device_id are None (no connection to a configuration or device). When the scan is called with strict_mode: true, additional checks are performed: entities with a platform reference but without device_id are marked as a warning (orphaned_reason contains "platform_without_device"). This helps identify potentially problematic entities that might be orphaned under certain circumstances.
+An entity is marked as orphaned if orphaned_timestamp exists in its attributes, OR both config_entry_id and device_id are None (no connection to a configuration or device). When the scan is called with strict_mode: true, additional checks are performed: entities with a platform reference but without device_id are marked as a warning (orphaned_reason contains "platform_without_device"). This helps identify potentially problematic entities that might be orphaned under certain circumstances.
 
 ### Allowlist (Protection List)
 
@@ -100,7 +87,7 @@ The following services are available:
 - orphan_cleaner.backup_results: Creates a backup of the results
 - orphan_cleaner.get_allowlist: Returns the current allowlist (for debugging)
 
-#### Service Examples
+Service Examples:
 
 Scan with strict_mode:
 service: orphan_cleaner.scan
@@ -120,9 +107,7 @@ data:
 - DELETE /api/orphan_cleaner/results: Delete all results
 - GET /orphan-cleaner: The sidebar panel (HTML)
 
-#### Pagination
-
-For large result sets, the endpoint supports pagination:
+Pagination:
 
 First 10 results: curl -X GET "http://homeassistant.local:8123/api/orphan_cleaner/results?limit=10"
 10 results from offset 20: curl -X GET "http://homeassistant.local:8123/api/orphan_cleaner/results?limit=10&offset=20"
@@ -147,14 +132,14 @@ Backup is not created? Check write permissions in the Home Assistant configurati
 
 ### Development
 
-#### Requirements
+Requirements:
 - Home Assistant 2026.8.1 or newer
 - Python 3.10 or newer
 
-#### Run tests
+Run tests:
 pytest -q
 
-#### Contribution Workflow
+Contribution:
 1. Fork the repository.
 2. Create a feature branch.
 3. Add tests for new features.
@@ -199,54 +184,37 @@ Bevor du Entitäten löschst, erstelle ein vollständiges Backup deiner Home Ass
 
 ### Installation
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=realsly2&repository=Orphan-Entity-Cleaner&category=integration)
-
-
-#### Via HACS (empfohlen)
-
+#### Option 1: Via HACS (empfohlen)
 1. Öffne HACS in Home Assistant.
-2. Klicke auf "Integrations" und dann auf die drei Punkte (⋮) oben rechts.
-3. Wähle "Custom repositories" und füge diese URL hinzu: https://github.com/realsly2/Orphan-Entity-Cleaner
+2. Klicke auf "Integrationen" und dann auf die drei Punkte (⋮) oben rechts.
+3. Wähle "Benutzerdefinierte Repositories" und füge diese URL hinzu: https://github.com/realsly2/Orphan-Entity-Cleaner
 4. Wähle "Integration" als Kategorie.
 5. Klicke auf "Installieren".
 6. Starte Home Assistant neu.
 
+#### Option 2: Manuelle Installation
+1. Lade den Ordner custom_components/orphan_cleaner/ aus diesem Repository herunter.
+2. Kopiere ihn in dein Home Assistant custom_components/-Verzeichnis.
+3. Füge die folgende Zeile in deine configuration.yaml ein:
+   orphan_cleaner:
+4. Starte Home Assistant neu.
 
----
-
-### 🇩🇪 Deutsche Version (für den deutschen Teil deiner README)
-
-```markdown
-### Installation über configuration.yaml
-
-Wenn du die manuelle Installation ohne HACS bevorzugst, kannst du die Integration auch über deine `configuration.yaml` einrichten:
-
-1. Lade den Ordner `custom_components/orphan_cleaner/` aus dem [GitHub-Repository](https://github.com/realsly2/Orphan-Entity-Cleaner) herunter und kopiere ihn in dein Home Assistant `custom_components/`-Verzeichnis.
-
-2. Füge die folgende Zeile in deine `configuration.yaml` ein:
-
-```yaml
-orphan_cleaner:
-#### Manuelle Installation
-
-1. Kopiere den Ordner custom_components/orphan_cleaner/ in deinen Home Assistant custom_components/-Ordner.
-2. Starte Home Assistant neu.
-3. Füge die Integration in Home Assistant hinzu (Konfiguration → Integrationen → "+ Integration hinzufügen" → "Orphan Cleaner").
+Nach dem Neustart findest du das Orphan Cleaner-Panel in deiner Seitenleiste.
 
 ### Nutzung
 
-1. Öffne Orphan Cleaner im Home Assistant Sidebar (Admin-Zugriff erforderlich).
+1. Öffne Orphan Cleaner über die Seitenleiste (Admin-Zugriff erforderlich).
 2. Klicke auf "Scan starten".
-3. Überprüfe die Liste der gefundenen verwaisten Entitäten.
-4. Nutze die Suche und Filter, um die Auswahl einzugrenzen.
+3. Überprüfe die erkannten Entitäten.
+4. Nutze die Suche und Filter, um deine Auswahl einzugrenzen.
 5. Wähle die Entitäten aus, die du löschen möchtest.
-6. Exportiere oder backup die Ergebnisse (optional, aber empfohlen).
+6. Exportiere oder erstelle ein Backup der Ergebnisse (optional, aber empfohlen).
 7. Führe einen Dry-Run durch, um zu testen.
 8. Klicke auf "Ausgewählte löschen".
 
 ### Erkennungslogik
 
-Eine Entität wird als verwaist markiert, wenn entweder orphaned_timestamp im Attribut vorhanden ist, oder sowohl config_entry_id als auch device_id None sind (keine Verbindung zu einer Konfiguration oder einem Gerät). Wenn der Scan mit strict_mode: true aufgerufen wird, werden zusätzliche Prüfungen durchgeführt: Entitäten mit einer platform-Referenz aber ohne device_id werden als Warnung markiert (orphaned_reason enthält "platform_without_device"). Dies hilft, potenziell problematische Entitäten zu identifizieren, die unter bestimmten Umständen verwaist sein könnten.
+Eine Entität wird als verwaist markiert, wenn entweder orphaned_timestamp im Attribut vorhanden ist, oder sowohl config_entry_id als auch device_id None sind (keine Verbindung zu einer Konfiguration oder einem Gerät). Wenn der Scan mit strict_mode: true aufgerufen wird, werden zusätzliche Prüfungen durchgeführt: Entitäten mit einer Plattform-Referenz aber ohne device_id werden als Warnung markiert (orphaned_reason enthält "platform_without_device"). Dies hilft, potenziell problematische Entitäten zu identifizieren, die unter bestimmten Umständen verwaist sein könnten.
 
 ### Allowlist (Schutzliste)
 
@@ -271,7 +239,7 @@ Die folgenden Services stehen zur Verfügung:
 - orphan_cleaner.backup_results: Erstellt ein Backup der Ergebnisse
 - orphan_cleaner.get_allowlist: Gibt die aktuelle Allowlist zurück (für Debugging)
 
-#### Service-Beispiele
+Service-Beispiele:
 
 Scan mit strict_mode:
 service: orphan_cleaner.scan
@@ -291,9 +259,7 @@ data:
 - DELETE /api/orphan_cleaner/results: Alle Ergebnisse löschen
 - GET /orphan-cleaner: Das Sidebar-Panel (HTML)
 
-#### Paginierung
-
-Für große Ergebnismengen unterstützt der Endpunkt Paginierung:
+Paginierung:
 
 Erste 10 Ergebnisse: curl -X GET "http://homeassistant.local:8123/api/orphan_cleaner/results?limit=10"
 10 Ergebnisse ab Offset 20: curl -X GET "http://homeassistant.local:8123/api/orphan_cleaner/results?limit=10&offset=20"
@@ -318,14 +284,14 @@ Backup wird nicht erstellt? Prüfe die Schreibrechte im Home Assistant Konfigura
 
 ### Entwicklung
 
-#### Voraussetzungen
+Voraussetzungen:
 - Home Assistant 2026.8.1 oder neuer
 - Python 3.10 oder neuer
 
-#### Tests ausführen
+Tests ausführen:
 pytest -q
 
-#### Workflow für Beiträge
+Beiträge:
 1. Forke das Repository.
 2. Erstelle einen Feature-Branch.
 3. Füge Tests für neue Funktionen hinzu.

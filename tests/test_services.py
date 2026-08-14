@@ -1,3 +1,4 @@
+# tests/test_services.py
 from __future__ import annotations
 
 import json
@@ -74,7 +75,7 @@ async def test_backup_results_service_writes_file(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_delete_selected_skips_protected_and_deletes_unprotected(tmp_path):
+async def test_delete_selected_skips_protected_and_deletes_unprotected(monkeypatch, tmp_path):
     entities = {
         "sensor.keep": FakeEntityEntry(
             entity_id="sensor.keep",
@@ -88,6 +89,11 @@ async def test_delete_selected_skips_protected_and_deletes_unprotected(tmp_path)
     registry = FakeRegistry(entities)
     hass = FakeHass(registry, tmp_path)
     hass.data = {DOMAIN: {RESULTS_KEY: []}}
+
+    monkeypatch.setattr(
+        "custom_components.orphan_cleaner.services.er.async_get",
+        lambda hass: registry,
+    )
 
     await async_delete_selected_service(
         FakeCall(hass, {"entity_ids": ["sensor.keep", "sensor.delete"]})

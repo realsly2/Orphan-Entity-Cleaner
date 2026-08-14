@@ -1,89 +1,49 @@
 # Orphan Cleaner
 
-[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/)
-[![GitHub release](https://img.shields.io/github/v/release/realsly2/Orphan-Entity-Cleaner)](https://github.com/realsly2/Orphan-Entity-Cleaner/releases)
+[![HACS](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz)
 [![License](https://img.shields.io/github/license/realsly2/Orphan-Entity-Cleaner)](LICENSE)
+[![Version](https://img.shields.io/github/v/release/realsly2/Orphan-Entity-Cleaner)](https://github.com/realsly2/Orphan-Entity-Cleaner/releases)
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=realsly2&repository=Orphan-Entity-Cleaner&category=integration)
+## Was sind verwaiste Entitäten?
 
-Orphan Cleaner is a Home Assistant custom integration for finding, reviewing, backing up, exporting, and deleting orphaned entities.
+In Home Assistant können Entitäten "verwaisten", wenn:
+- Eine Integration oder ein Gerät entfernt wird, aber die dazugehörigen Entitäten in der Registry bleiben.
+- Ein Gerät nicht mehr erreichbar ist oder abgemeldet wurde.
+- Ein Integrations-Update die Entitäts-Struktur ändert.
 
-It provides a built-in Home Assistant sidebar panel, bulk actions, search, and safety checks to help you clean up your system with confidence.
+Diese Entitäten sind nicht mehr funktional, können aber:
+- Deine Entitätsliste unübersichtlich machen
+- Die Performance beeinträchtigen
+- Fehler in Logs und Automatisierungen verursachen
+
+## ⚠️ Wichtiger Sicherheitshinweis
+
+**Bevor du Entitäten löschst:**
+1. **Erstelle ein vollständiges Backup** deiner Home Assistant-Konfiguration (nicht nur das automatische Backup dieser Integration).
+2. **Überprüfe** alle Automatisierungen, Skripte und Dashboards, die diese Entitäten verwenden könnten.
+3. **Nutze den Dry-Run-Modus** zuerst, um die Auswirkungen zu prüfen.
+
+**Gelöschte Entitäten können nicht wiederhergestellt werden** (außer über ein Backup)!
 
 ## Features
 
-- Detect orphaned entities
-- Built-in Home Assistant sidebar panel
-- Search by entity ID, name, or platform
-- Bulk selection with checkboxes
-- Dry-run support
-- Export scan results as JSON
-- Automatic backup before destructive actions
-- Protection for entities with a `config_entry_id`
-- Clear stored results
-- Admin-only access
+- 🕵️ **Erkennung** verwaister Entitäten (mit erweiterten Kriterien)
+- 🖥️ **Integriertes Sidebar-Panel** für einfache Bedienung
+- 🔍 **Suche** nach Entitäts-ID, Name oder Plattform
+- ✅ **Bulk-Auswahl** mit Checkboxen
+- 🧪 **Dry-Run-Unterstützung** (teste, was passieren würde)
+- 💾 **Export** der Scan-Ergebnisse als JSON
+- 🛡️ **Automatisches Backup** vor jeder Lösch-Aktion
+- 🔒 **Schutz für Entitäten mit config_entry_id**
+- 📋 **Allowlist** für kritische Entitäten (nie löschen)
+- 🔍 **Erweiterte Erkennungslogik** mit `strict_mode` für zusätzliche Prüfungen
+- 📄 **Paginierung** für den API-Endpunkt bei großen Ergebnismengen
+- 🔐 **Admin-only Zugriff**
 
 ## Installation
 
-### Via HACS
+### Via HACS (empfohlen)
 
-1. Open HACS in Home Assistant.
-2. Add this repository as an Integration.
-3. Install the integration.
-4. Restart Home Assistant.
-
-### Manual installation
-
-1. Copy `custom_components/orphan_cleaner/` into your Home Assistant `custom_components/` folder.
-2. Restart Home Assistant.
-3. Add the integration in Home Assistant.
-
-## Usage
-
-1. Open **Orphan Cleaner** from the Home Assistant sidebar.
-2. Run a scan.
-3. Review the detected entities.
-4. Filter and select the entities you want to handle.
-5. Export or back up the results if needed.
-6. Delete only the entities you want to remove.
-
-## Detection logic
-
-An entity is marked as orphaned if:
-
-- `orphaned_timestamp` exists, or
-- both `config_entry_id` and `device_id` are `None`
-
-Results are sorted by `entity_id`.
-
-## Services
-
-- `orphan_cleaner.scan`
-- `orphan_cleaner.delete_selected`
-- `orphan_cleaner.clear_results`
-- `orphan_cleaner.export_results`
-- `orphan_cleaner.backup_results`
-
-## API endpoints
-
-- `GET /api/orphan_cleaner/results`
-- `GET /orphan-cleaner`
-
-## Safety
-
-Before any destructive deletion, Orphan Cleaner creates a backup automatically.
-
-Entities that still have a `config_entry_id` are protected from deletion.
-
-## Development
-
-Requirements:
-
-- Home Assistant 2026.8.1 or newer
-
-Tests:
-
-```bash
-pytest -q
-
-
+1. Öffne HACS in Home Assistant.
+2. Klicke auf "Integrations" und dann auf die drei Punkte (⋮) oben rechts.
+3. Wähle "Custom repositories" und füge diese URL hinzu:

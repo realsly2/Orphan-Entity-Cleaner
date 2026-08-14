@@ -1,0 +1,12 @@
+DOMAIN = "orphan_cleaner"
+NAME = "Orphan Cleaner"
+VERSION = "0.2.2"
+
+PANEL_URL = "/orphan-cleaner"
+PANEL_TITLE = "Orphan Cleaner"
+PANEL_ICON = "mdi:file-find-outline"
+
+RESULTS_KEY = "results"
+EXPORT_KEY = "export"
+BACKUP_KEY = "backup"
+LAST_DELETED_KEY = "last_deleted"

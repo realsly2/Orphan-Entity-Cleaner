@@ -1,3 +1,4 @@
+# custom_components/orphan_cleaner/orphan_detector.py
 from __future__ import annotations
 
 from typing import Any
@@ -11,7 +12,7 @@ def async_find_orphans(hass: HomeAssistant) -> list[dict[str, Any]]:
     results: list[dict[str, Any]] = []
 
     for entry in registry.entities.values():
-        orphaned_timestamp = entry.extra.get("orphaned_timestamp") if entry.extra else None
+        orphaned_timestamp = entry.orphaned_timestamp
         no_links = entry.config_entry_id is None and entry.device_id is None
 
         if not orphaned_timestamp and not no_links:

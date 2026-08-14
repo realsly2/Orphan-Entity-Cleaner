@@ -50,6 +50,17 @@ Before deleting entities, create a full backup of your Home Assistant configurat
 1. Copy the custom_components/orphan_cleaner/ folder into your Home Assistant custom_components/ folder.
 2. Restart Home Assistant.
 3. Add the integration in Home Assistant (Configuration → Integrations → "+ Add Integration" → "Orphan Cleaner").
+   
+### Installation via configuration.yaml
+
+If you prefer manual installation without HACS, you can also install the integration by adding it to your `configuration.yaml`:
+
+1. Download the `custom_components/orphan_cleaner/` folder from the [GitHub repository](https://github.com/realsly2/Orphan-Entity-Cleaner) and copy it into your Home Assistant `custom_components/` directory.
+
+2. Add the following line to your `configuration.yaml`:
+
+```yaml
+orphan_cleaner:
 
 ### Usage
 
@@ -200,6 +211,22 @@ Bevor du Entitäten löschst, erstelle ein vollständiges Backup deiner Home Ass
 5. Klicke auf "Installieren".
 6. Starte Home Assistant neu.
 
+
+---
+
+### 🇩🇪 Deutsche Version (für den deutschen Teil deiner README)
+
+```markdown
+### Installation über configuration.yaml
+
+Wenn du die manuelle Installation ohne HACS bevorzugst, kannst du die Integration auch über deine `configuration.yaml` einrichten:
+
+1. Lade den Ordner `custom_components/orphan_cleaner/` aus dem [GitHub-Repository](https://github.com/realsly2/Orphan-Entity-Cleaner) herunter und kopiere ihn in dein Home Assistant `custom_components/`-Verzeichnis.
+
+2. Füge die folgende Zeile in deine `configuration.yaml` ein:
+
+```yaml
+orphan_cleaner:
 #### Manuelle Installation
 
 1. Kopiere den Ordner custom_components/orphan_cleaner/ in deinen Home Assistant custom_components/-Ordner.

@@ -1,13 +1,7 @@
 {
-
-## hacs.json
-
-```json
-{
   "name": "Orphan Cleaner",
   "render_readme": true,
   "domain": "orphan_cleaner",
   "country": "DE",
   "homeassistant": "2026.8.1"
 }
-

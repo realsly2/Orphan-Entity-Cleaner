@@ -1,7 +1,10 @@
+# custom_components/orphan_cleaner/api.py
 from __future__ import annotations
 
+from aiohttp.web import Request
+
 from homeassistant.components.http import HomeAssistantView
-from homeassistant.core import HomeAssistant, Request
+from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN, RESULTS_KEY
 

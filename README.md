@@ -33,6 +33,9 @@ Before deleting entities, create a full backup of your Home Assistant configurat
 
 ### Installation
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=realsly2&repository=Orphan-Entity-Cleaner&category=integration)
+
+
 #### Via HACS (recommended)
 
 1. Open HACS in Home Assistant.
@@ -184,6 +187,9 @@ Bevor du Entitäten löschst, erstelle ein vollständiges Backup deiner Home Ass
 - 🔐 Admin-only Zugriff
 
 ### Installation
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=realsly2&repository=Orphan-Entity-Cleaner&category=integration)
+
 
 #### Via HACS (empfohlen)
 

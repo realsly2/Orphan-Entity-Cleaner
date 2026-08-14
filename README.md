@@ -4,9 +4,7 @@
 [![GitHub release](https://img.shields.io/github/v/release/realsly2/Orphan-Entity-Cleaner)](https://github.com/realsly2/Orphan-Entity-Cleaner/releases)
 [![License](https://img.shields.io/github/license/realsly2/Orphan-Entity-Cleaner)](LICENSE)
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)]
-
-(https://my.home-assistant.io/redirect/hacs_repository/?owner=realsly2&repository=Orphan-Entity-Cleaner&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=realsly2&repository=Orphan-Entity-Cleaner&category=integration)
 
 Orphan Cleaner is a Home Assistant custom integration for finding, reviewing, backing up, exporting, and deleting orphaned entities.
 
@@ -87,4 +85,5 @@ Tests:
 
 ```bash
 pytest -q
+
 

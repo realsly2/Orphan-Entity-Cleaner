@@ -5,36 +5,35 @@
 [![License](https://img.shields.io/github/license/realsly2/Orphan-Entity-Cleaner)](LICENSE)
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=realsly2&repository=Orphan-Entity-Cleaner&category=integration)
 
-Orphan Cleaner is a Home Assistant custom integration for identifying, reviewing, backing up, exporting, and removing orphaned entities from your system.
+Orphan Cleaner is a Home Assistant custom integration for finding, reviewing, backing up, exporting, and deleting orphaned entities.
 
-It provides a built-in Home Assistant panel, bulk actions, safety checks, and automatic backups before deletion.
+It provides a built-in Home Assistant sidebar panel, bulk actions, search, and safety checks to help you clean up your system with confidence.
 
 ## Features
 
-- Detect orphaned entities automatically
-- Show results in a built-in Home Assistant sidebar panel
+- Detect orphaned entities
+- Built-in Home Assistant sidebar panel
 - Search by entity ID, name, or platform
-- Select multiple entities for bulk actions
+- Bulk selection with checkboxes
 - Dry-run support
 - Export scan results as JSON
-- Create backups before destructive actions
-- Protect entities with a `config_entry_id`
+- Automatic backup before destructive actions
+- Protection for entities with a `config_entry_id`
 - Clear stored results
 - Admin-only access
 
 ## Installation
 
-### Recommended: HACS
+### Via HACS
 
-1. Open **HACS** in Home Assistant.
-2. Click the HACS install button above.
-3. Add this repository as an **Integration**.
-4. Install the integration.
-5. Restart Home Assistant.
+1. Open HACS in Home Assistant.
+2. Add this repository as an Integration.
+3. Install the integration.
+4. Restart Home Assistant.
 
 ### Manual installation
 
-1. Copy the `custom_components/orphan_cleaner/` folder into your Home Assistant `custom_components/` directory.
+1. Copy `custom_components/orphan_cleaner/` into your Home Assistant `custom_components/` folder.
 2. Restart Home Assistant.
 3. Add the integration in Home Assistant.
 
@@ -42,10 +41,10 @@ It provides a built-in Home Assistant panel, bulk actions, safety checks, and au
 
 1. Open **Orphan Cleaner** from the Home Assistant sidebar.
 2. Run a scan.
-3. Review the detected orphaned entities.
-4. Use search and selection to narrow the list.
-5. Export or back up results if needed.
-6. Delete only the entities you want removed.
+3. Review the detected entities.
+4. Filter and select the entities you want to handle.
+5. Export or back up the results if needed.
+6. Delete only the entities you want to remove.
 
 ## Detection logic
 
@@ -71,15 +70,18 @@ Results are sorted by `entity_id`.
 
 ## Safety
 
-Before any destructive deletion, Orphan Cleaner automatically creates a backup.
+Before any destructive deletion, Orphan Cleaner creates a backup automatically.
 
 Entities that still have a `config_entry_id` are protected from deletion.
 
-## Project structure
+## Development
 
-```text
-custom\_components/orphan\_cleaner/
-brand/
-tests/
+Requirements:
 
+- Home Assistant 2026.8.1 or newer
+
+Tests:
+
+```bash
+pytest -q
 

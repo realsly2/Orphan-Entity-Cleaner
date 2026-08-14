@@ -1,7 +1,9 @@
+# custom_components/orphan_cleaner/views.py
 from __future__ import annotations
 
+from aiohttp.web import Request
+
 from homeassistant.components.http import HomeAssistantView
-from homeassistant.core import Request
 
 from .panel_html import PANEL_HTML
 

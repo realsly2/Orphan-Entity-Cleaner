@@ -1,5 +1,5 @@
 {
-  "name": "Orphan Entity Cleaner",
-  "render_readme": true,
-  "homeassistant": "2026.8.1"
+  "name": "Orphan Cleaner",
+  "filename": "orphan_cleaner",
+  "render_readme": true
 }

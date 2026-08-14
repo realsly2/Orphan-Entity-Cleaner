@@ -1,3 +1,4 @@
+# tests/conftest.py
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -15,7 +16,7 @@ class FakeEntityEntry:
     platform: str | None = None
     config_entry_id: str | None = None
     device_id: str | None = None
-    extra: dict[str, Any] = field(default_factory=dict)
+    orphaned_timestamp: float | None = None
 
 
 class FakeRegistry:
@@ -41,6 +42,9 @@ class FakeHass:
         self._registry = registry
         self.config = SimpleNamespace(path=lambda name: str(config_dir / name))
         self.services = FakeServices()
+
+    async def async_add_executor_job(self, func, *args):
+        return func(*args)
 
 
 class FakeCall:

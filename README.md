@@ -1,19 +1,25 @@
-# Orphan Entity Cleaner
+# Orphan Cleaner
 
-Home Assistant HACS integration for detecting, listing, backing up, exporting, and safely deleting orphaned entities.
+Home Assistant custom integration for finding and removing orphaned entities.
 
 ## Features
-- Orphan detection
-- Admin-only sidebar panel
-- Search and selection
-- Backup before delete
+- Scan entity registry for orphaned entities
+- List results in a built-in admin panel
+- Search by entity_id, name, platform
+- Select visible rows
 - Export results
-- Safe deletion with config-entry protection
+- Backup before deletion
+- Protect entities with `config_entry_id`
 
-## Installation
-1. Add this repository to HACS as a custom repository.
-2. Install the integration.
-3. Restart Home Assistant.
+## Install
+Copy `custom_components/orphan_cleaner/` into your Home Assistant `custom_components/` folder.
 
-## License
-MIT
+## Services
+- `orphan_cleaner.scan`
+- `orphan_cleaner.clear_results`
+- `orphan_cleaner.export_results`
+- `orphan_cleaner.backup_results`
+- `orphan_cleaner.delete_selected`
+
+## Notes
+This integration is designed for manual HACS-style installation.

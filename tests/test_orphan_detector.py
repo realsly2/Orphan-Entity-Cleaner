@@ -1,3 +1,4 @@
+# tests/test_orphan_detector.py
 from __future__ import annotations
 
 from custom_components.orphan_cleaner.const import DOMAIN
@@ -13,7 +14,7 @@ def test_async_find_orphans_filters_and_sorts(monkeypatch, tmp_path):
             platform="mqtt",
             config_entry_id=None,
             device_id=None,
-            extra={},
+            orphaned_timestamp=None,
         ),
         "a": FakeEntityEntry(
             entity_id="sensor.a",
@@ -21,7 +22,7 @@ def test_async_find_orphans_filters_and_sorts(monkeypatch, tmp_path):
             platform="template",
             config_entry_id=None,
             device_id=None,
-            extra={"orphaned_timestamp": "2026-08-14T00:00:00Z"},
+            orphaned_timestamp=1755129600.0,
         ),
         "c": FakeEntityEntry(
             entity_id="sensor.c",
@@ -29,7 +30,7 @@ def test_async_find_orphans_filters_and_sorts(monkeypatch, tmp_path):
             platform="zha",
             config_entry_id="abc",
             device_id="dev1",
-            extra={},
+            orphaned_timestamp=None,
         ),
     }
 

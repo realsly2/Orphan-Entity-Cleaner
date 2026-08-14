@@ -1,13 +1,13 @@
 {
-  "domain": "orphan_entity_cleaner",
-  "name": "Orphan Entity Cleaner",
+  "domain": "orphan_cleaner",
+  "name": "Orphan Cleaner",
   "version": "0.2.2",
   "documentation": "https://github.com/realsly2/Orphan-Entity-Cleaner",
   "issue_tracker": "https://github.com/realsly2/Orphan-Entity-Cleaner/issues",
   "codeowners": ["@realsly2"],
   "config_flow": true,
   "iot_class": "local_push",
-  "requirements": [],
-  "dependencies": [],
-  "integration_type": "hub"
+  "integration_type": "service",
+  "requirements": []
 }
+

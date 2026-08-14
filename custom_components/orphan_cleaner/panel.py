@@ -1,5 +1,7 @@
+# custom_components/orphan_cleaner/panel.py
 from __future__ import annotations
 
+from homeassistant.components import frontend
 from homeassistant.core import HomeAssistant
 
 from .api import OrphanCleanerResultsView
@@ -10,11 +12,12 @@ from .views import OrphanCleanerPanelView
 async def async_register_panel(hass: HomeAssistant) -> None:
     hass.http.register_view(OrphanCleanerPanelView())
     hass.http.register_view(OrphanCleanerResultsView(hass))
-    hass.components.frontend.async_register_built_in_panel(
+    frontend.async_register_built_in_panel(
         hass,
-        PANEL_URL.strip("/"),
-        PANEL_TITLE,
-        PANEL_ICON,
-        require_admin=True,
+        "iframe",
+        sidebar_title=PANEL_TITLE,
+        sidebar_icon=PANEL_ICON,
         frontend_url_path=PANEL_URL.strip("/"),
+        config={"url": PANEL_URL},
+        require_admin=True,
     )

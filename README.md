@@ -39,15 +39,18 @@ Before deleting entities, create a full backup of your Home Assistant configurat
 3. Add this URL: https://github.com/realsly2/Orphan-Entity-Cleaner
 4. Select "Integration" as the category.
 5. Click "Install" and restart Home Assistant.
+6. Go to **Settings → Devices & Services → Add Integration**, search for "Orphan Cleaner" and confirm. No YAML editing required.
 
 #### Option 2: Manual Installation
 1. Download the custom_components/orphan_cleaner/ folder from this repository.
 2. Copy it into your Home Assistant custom_components/ directory.
-3. Add the following line to your configuration.yaml:
-   orphan_cleaner:
-4. Restart Home Assistant.
+3. Restart Home Assistant.
+4. Go to **Settings → Devices & Services → Add Integration**, search for "Orphan Cleaner" and confirm.
 
-After the restart, you will find the Orphan Cleaner panel in your sidebar.
+Alternatively, for legacy YAML setup, add the following line to your configuration.yaml instead of using the UI:
+   orphan_cleaner:
+
+After setup, you will find the Orphan Cleaner panel in your sidebar.
 
 ### Usage
 
@@ -191,15 +194,18 @@ Bevor du Entitäten löschst, erstelle ein vollständiges Backup deiner Home Ass
 4. Wähle "Integration" als Kategorie.
 5. Klicke auf "Installieren".
 6. Starte Home Assistant neu.
+7. Gehe zu **Einstellungen → Geräte & Dienste → Integration hinzufügen**, suche nach "Orphan Cleaner" und bestätige. Keine YAML-Bearbeitung nötig.
 
 #### Option 2: Manuelle Installation
 1. Lade den Ordner custom_components/orphan_cleaner/ aus diesem Repository herunter.
 2. Kopiere ihn in dein Home Assistant custom_components/-Verzeichnis.
-3. Füge die folgende Zeile in deine configuration.yaml ein:
-   orphan_cleaner:
-4. Starte Home Assistant neu.
+3. Starte Home Assistant neu.
+4. Gehe zu **Einstellungen → Geräte & Dienste → Integration hinzufügen**, suche nach "Orphan Cleaner" und bestätige.
 
-Nach dem Neustart findest du das Orphan Cleaner-Panel in deiner Seitenleiste.
+Alternativ, für die klassische YAML-Einrichtung, füge stattdessen diese Zeile in deine configuration.yaml ein:
+   orphan_cleaner:
+
+Nach der Einrichtung findest du das Orphan Cleaner-Panel in deiner Seitenleiste.
 
 ### Nutzung
 

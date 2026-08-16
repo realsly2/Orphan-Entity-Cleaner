@@ -27,9 +27,12 @@ async def test_scan_service_stores_results(monkeypatch, tmp_path):
     registry = FakeRegistry({})
     hass = FakeHass(registry, tmp_path)
 
+    async def fake_find_orphans(hass, strict_mode=False):
+        return [{"entity_id": "sensor.test"}]
+
     monkeypatch.setattr(
         "custom_components.orphan_cleaner.services.async_find_orphans",
-        lambda hass: [{"entity_id": "sensor.test"}],
+        fake_find_orphans,
     )
 
     await async_scan_service(FakeCall(hass))
@@ -85,6 +88,10 @@ async def test_delete_selected_skips_protected_and_deletes_unprotected(monkeypat
             entity_id="sensor.delete",
             config_entry_id=None,
         ),
+        "zone.home": FakeEntityEntry(
+            entity_id="zone.home",
+            config_entry_id=None,
+        ),
     }
     registry = FakeRegistry(entities)
     hass = FakeHass(registry, tmp_path)
@@ -96,9 +103,16 @@ async def test_delete_selected_skips_protected_and_deletes_unprotected(monkeypat
     )
 
     await async_delete_selected_service(
-        FakeCall(hass, {"entity_ids": ["sensor.keep", "sensor.delete"]})
+        FakeCall(
+            hass,
+            {"entity_ids": ["sensor.keep", "sensor.delete", "zone.home", "sensor.missing"]},
+        )
     )
 
     assert registry.removed == ["sensor.delete"]
-    assert hass.data[DOMAIN][LAST_DELETED_KEY] == ["sensor.delete"]
+    summary = hass.data[DOMAIN][LAST_DELETED_KEY]
+    assert summary["deleted"] == ["sensor.delete"]
+    assert sorted(summary["protected"]) == ["sensor.keep", "zone.home"]
+    assert summary["not_found"] == ["sensor.missing"]
+    assert summary["errors"] == []
     assert list(tmp_path.glob("orphan_cleaner_backup_*.json"))

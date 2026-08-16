@@ -1,4 +1,15 @@
 {
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Orphan Cleaner",
+        "description": "Orphan Cleaner needs no further settings. Click Submit to enable the sidebar panel and services."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Orphan Cleaner is already set up. Only one instance is supported."
+    }
+  },
   "title": "Orphan Cleaner",
   "services": {
     "scan": {
@@ -20,6 +31,10 @@
     "delete_selected": {
       "name": "Delete selected entities",
       "description": "Delete selected orphan entities."
+    },
+    "get_allowlist": {
+      "name": "Get allowlist",
+      "description": "Return the current allowlist of protected entities (for debugging)."
     }
   }
 }

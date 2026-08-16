@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Orphan Cleaner einrichten",
+        "description": "Orphan Cleaner braucht keine weiteren Einstellungen. Klicke auf Absenden, um das Sidebar-Panel und die Services zu aktivieren."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Orphan Cleaner ist bereits eingerichtet. Es wird nur eine Instanz unterstützt."
+    }
+  },
+  "title": "Orphan Cleaner",
+  "services": {
+    "scan": {
+      "name": "Nach verwaisten Entitäten scannen",
+      "description": "Durchsucht die Entity Registry nach verwaisten Entitäten."
+    },
+    "clear_results": {
+      "name": "Ergebnisse löschen",
+      "description": "Löscht die gespeicherten Scan-Ergebnisse."
+    },
+    "export_results": {
+      "name": "Ergebnisse exportieren",
+      "description": "Exportiert die gespeicherten Scan-Ergebnisse als JSON."
+    },
+    "backup_results": {
+      "name": "Ergebnisse sichern",
+      "description": "Erstellt ein Backup der aktuellen Scan-Ergebnisse."
+    },
+    "delete_selected": {
+      "name": "Ausgewählte Entitäten löschen",
+      "description": "Löscht die ausgewählten verwaisten Entitäten."
+    },
+    "get_allowlist": {
+      "name": "Allowlist abrufen",
+      "description": "Gibt die aktuelle Allowlist geschützter Entitäten zurück (zum Debuggen)."
+    }
+  }
+}

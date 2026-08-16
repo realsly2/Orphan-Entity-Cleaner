@@ -4,6 +4,8 @@
 [![License](https://img.shields.io/github/license/realsly2/Orphan-Entity-Cleaner)](LICENSE)
 [![Version](https://img.shields.io/github/v/release/realsly2/Orphan-Entity-Cleaner)](https://github.com/realsly2/Orphan-Entity-Cleaner/releases)
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=realsly2&repository=Orphan-Entity-Cleaner&category=integration)
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=orphan_cleaner)
 
 ---
 
@@ -34,23 +36,29 @@ Before deleting entities, create a full backup of your Home Assistant configurat
 
 ### Installation
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=realsly2&repository=Orphan-Entity-Cleaner&category=integration)
-[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=orphan_cleaner)
-
-
 #### Option 1: Via HACS (recommended)
+
+Click the button below to open this repository directly inside HACS on your own Home Assistant instance (skips steps 1–4):
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=realsly2&repository=Orphan-Entity-Cleaner&category=integration)
+
+Or manually:
 1. Open HACS in Home Assistant.
 2. Click on "Integrations" → three dots (⋮) → "Custom repositories".
 3. Add this URL: https://github.com/realsly2/Orphan-Entity-Cleaner
 4. Select "Integration" as the category.
 5. Click "Install" and restart Home Assistant.
-6. Go to **Settings → Devices & Services → Add Integration**, search for "Orphan Cleaner" and confirm. No YAML editing required.
+6. Then set up the integration itself — click the button below, or go to **Settings → Devices & Services → Add Integration** and search for "Orphan Cleaner". No YAML editing required.
+
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=orphan_cleaner)
 
 #### Option 2: Manual Installation
 1. Download the custom_components/orphan_cleaner/ folder from this repository.
 2. Copy it into your Home Assistant custom_components/ directory.
 3. Restart Home Assistant.
-4. Go to **Settings → Devices & Services → Add Integration**, search for "Orphan Cleaner" and confirm.
+4. Then set up the integration — click the button below, or go to **Settings → Devices & Services → Add Integration** and search for "Orphan Cleaner".
+
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=orphan_cleaner)
 
 Alternatively, for legacy YAML setup, add the following line to your configuration.yaml instead of using the UI:
    orphan_cleaner:
@@ -192,24 +200,30 @@ Bevor du Entitäten löschst, erstelle ein vollständiges Backup deiner Home Ass
 
 ### Installation
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=realsly2&repository=Orphan-Entity-Cleaner&category=integration)
-[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=orphan_cleaner)
-
-
 #### Option 1: Via HACS (empfohlen)
+
+Klicke auf den Button, um dieses Repository direkt in HACS auf deiner eigenen Home-Assistant-Instanz zu öffnen (spart Schritte 1–4):
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=realsly2&repository=Orphan-Entity-Cleaner&category=integration)
+
+Oder manuell:
 1. Öffne HACS in Home Assistant.
 2. Klicke auf "Integrationen" und dann auf die drei Punkte (⋮) oben rechts.
 3. Wähle "Benutzerdefinierte Repositories" und füge diese URL hinzu: https://github.com/realsly2/Orphan-Entity-Cleaner
 4. Wähle "Integration" als Kategorie.
 5. Klicke auf "Installieren".
 6. Starte Home Assistant neu.
-7. Gehe zu **Einstellungen → Geräte & Dienste → Integration hinzufügen**, suche nach "Orphan Cleaner" und bestätige. Keine YAML-Bearbeitung nötig.
+7. Richte anschließend die Integration selbst ein — klicke auf den Button unten, oder gehe zu **Einstellungen → Geräte & Dienste → Integration hinzufügen** und suche nach "Orphan Cleaner". Keine YAML-Bearbeitung nötig.
+
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=orphan_cleaner)
 
 #### Option 2: Manuelle Installation
 1. Lade den Ordner custom_components/orphan_cleaner/ aus diesem Repository herunter.
 2. Kopiere ihn in dein Home Assistant custom_components/-Verzeichnis.
 3. Starte Home Assistant neu.
-4. Gehe zu **Einstellungen → Geräte & Dienste → Integration hinzufügen**, suche nach "Orphan Cleaner" und bestätige.
+4. Richte anschließend die Integration ein — klicke auf den Button unten, oder gehe zu **Einstellungen → Geräte & Dienste → Integration hinzufügen** und suche nach "Orphan Cleaner".
+
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=orphan_cleaner)
 
 Alternativ, für die klassische YAML-Einrichtung, füge stattdessen diese Zeile in deine configuration.yaml ein:
    orphan_cleaner:

@@ -4,8 +4,6 @@
 [![License](https://img.shields.io/github/license/realsly2/Orphan-Entity-Cleaner)](LICENSE)
 [![Version](https://img.shields.io/github/v/release/realsly2/Orphan-Entity-Cleaner)](https://github.com/realsly2/Orphan-Entity-Cleaner/releases)
 
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=realsly2&repository=Orphan-Entity-Cleaner&category=integration)
-[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=orphan_cleaner)
 
 ---
 
@@ -35,6 +33,10 @@ Before deleting entities, create a full backup of your Home Assistant configurat
 - 🔐 Admin-only access
 
 ### Installation
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=realsly2&repository=Orphan-Entity-Cleaner&category=integration)
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=orphan_cleaner)
+
 
 #### Option 1: Via HACS (recommended)
 1. Open HACS in Home Assistant.
@@ -189,6 +191,10 @@ Bevor du Entitäten löschst, erstelle ein vollständiges Backup deiner Home Ass
 - 🔐 Admin-only Zugriff
 
 ### Installation
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=realsly2&repository=Orphan-Entity-Cleaner&category=integration)
+[![Open your Home Assistant instance and start setting up a new integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=orphan_cleaner)
+
 
 #### Option 1: Via HACS (empfohlen)
 1. Öffne HACS in Home Assistant.

@@ -1,0 +1,40 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Orphan Cleaner",
+        "description": "Orphan Cleaner needs no further settings. Click Submit to enable the sidebar panel and services."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Orphan Cleaner is already set up. Only one instance is supported."
+    }
+  },
+  "title": "Orphan Cleaner",
+  "services": {
+    "scan": {
+      "name": "Scan for orphans",
+      "description": "Scan the entity registry for orphaned entities."
+    },
+    "clear_results": {
+      "name": "Clear results",
+      "description": "Clear stored scan results."
+    },
+    "export_results": {
+      "name": "Export results",
+      "description": "Export stored scan results as JSON."
+    },
+    "backup_results": {
+      "name": "Backup results",
+      "description": "Create a backup of the current scan results."
+    },
+    "delete_selected": {
+      "name": "Delete selected entities",
+      "description": "Delete selected orphan entities."
+    },
+    "get_allowlist": {
+      "name": "Get allowlist",
+      "description": "Return the current allowlist of protected entities (for debugging)."
+    }
+  }
+}

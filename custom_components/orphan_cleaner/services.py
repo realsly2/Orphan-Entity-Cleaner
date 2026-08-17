@@ -29,11 +29,18 @@ async def async_scan_service(call: ServiceCall) -> None:
     """Führt einen Scan mit erweiterter Logik durch."""
     hass = call.hass
     hass.data.setdefault(DOMAIN, {})
-    
-    # NEU: Optionaler strict_mode (kann über Service-Call gesteuert werden)
+
     strict_mode = call.data.get("strict_mode", False)
-    results = await async_find_orphans(hass, strict_mode=strict_mode)
-    
+    min_orphan_age_hours = call.data.get("min_orphan_age_hours", 0)
+    aggressive_heuristic = call.data.get("aggressive_heuristic", False)
+
+    results = await async_find_orphans(
+        hass,
+        strict_mode=strict_mode,
+        min_orphan_age_hours=min_orphan_age_hours,
+        aggressive_heuristic=aggressive_heuristic,
+    )
+
     hass.data[DOMAIN][RESULTS_KEY] = results
     _LOGGER.info("Scan completed. Found %d orphaned entities.", len(results))
 
@@ -182,6 +189,10 @@ def async_register_services(hass: HomeAssistant) -> None:
         async_scan_service,
         schema=vol.Schema({
             vol.Optional("strict_mode", default=False): bool,
+            vol.Optional("min_orphan_age_hours", default=0): vol.All(
+                vol.Coerce(float), vol.Range(min=0)
+            ),
+            vol.Optional("aggressive_heuristic", default=False): bool,
         })
     )
     hass.services.async_register(DOMAIN, "clear_results", async_clear_results_service)

@@ -14,7 +14,21 @@
   "services": {
     "scan": {
       "name": "Nach verwaisten Entitäten scannen",
-      "description": "Durchsucht die Entity Registry nach verwaisten Entitäten."
+      "description": "Durchsucht die Entity Registry nach verwaisten Entitäten.",
+      "fields": {
+        "strict_mode": {
+          "name": "Strikter Modus",
+          "description": "Markiert zusätzlich Entitäten mit Plattform-Referenz aber ohne device_id als Warnung, auch wenn sie sonst verknüpft sind."
+        },
+        "min_orphan_age_hours": {
+          "name": "Mindestalter (Stunden)",
+          "description": "Meldet Entitäten erst als verwaist, wenn sie seit mindestens dieser Stundenzahl verwaist sind. Verhindert False Positives kurz nach einem Neustart."
+        },
+        "aggressive_heuristic": {
+          "name": "Aggressive Heuristik",
+          "description": "Markiert zusätzlich manuell deaktivierte Entitäten, die seit mindestens dem Mindestalter unverändert sind. Höheres Risiko für False Positives als die Standard-Erkennung."
+        }
+      }
     },
     "clear_results": {
       "name": "Ergebnisse löschen",

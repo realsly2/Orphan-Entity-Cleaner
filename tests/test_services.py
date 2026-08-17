@@ -27,7 +27,7 @@ async def test_scan_service_stores_results(monkeypatch, tmp_path):
     registry = FakeRegistry({})
     hass = FakeHass(registry, tmp_path)
 
-    async def fake_find_orphans(hass, strict_mode=False):
+    async def fake_find_orphans(hass, strict_mode=False, min_orphan_age_hours=0, aggressive_heuristic=False):
         return [{"entity_id": "sensor.test"}]
 
     monkeypatch.setattr(

@@ -14,7 +14,21 @@
   "services": {
     "scan": {
       "name": "Scan for orphans",
-      "description": "Scan the entity registry for orphaned entities."
+      "description": "Scan the entity registry for orphaned entities.",
+      "fields": {
+        "strict_mode": {
+          "name": "Strict mode",
+          "description": "Also flag entities that have a platform but no device_id as a warning, even if otherwise linked."
+        },
+        "min_orphan_age_hours": {
+          "name": "Minimum orphan age (hours)",
+          "description": "Only report entities as orphaned once they have been orphaned for at least this many hours. Helps avoid false positives right after a restart."
+        },
+        "aggressive_heuristic": {
+          "name": "Aggressive heuristic",
+          "description": "Also flag entities that were manually disabled and have not been modified for at least the minimum orphan age. Higher false-positive risk than the default detection."
+        }
+      }
     },
     "clear_results": {
       "name": "Clear results",

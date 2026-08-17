@@ -17,6 +17,8 @@ class FakeEntityEntry:
     config_entry_id: str | None = None
     device_id: str | None = None
     orphaned_timestamp: float | None = None
+    disabled_by: str | None = None
+    modified_at: object | None = None
 
 
 class FakeRegistry:

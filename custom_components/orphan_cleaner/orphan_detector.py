@@ -16,48 +16,45 @@ async def async_find_orphans(
 ) -> list[dict[str, Any]]:
     """Findet verwaiste Entitäten.
 
-    Wichtig: config_entry_id, device_id, orphaned_timestamp, disabled_by und
-    modified_at sind Felder der Entity Registry, keine State-Attribute.
-    Deshalb wird hier immer die Registry (entity_registry.async_get)
-    abgefragt, nicht hass.states.
+    WICHTIG (korrigiert): orphaned_timestamp existiert NICHT auf RegistryEntry
+    (aktive Entitäten in registry.entities) - das war ein Fehler in einer
+    früheren Version dieser Datei und führte zu:
+    "'RegistryEntry' object has no attribute 'orphaned_timestamp'".
+
+    Tatsächlich hat HA intern zwei getrennte Sammlungen:
+    - registry.entities: aktive RegistryEntry-Objekte. Haben config_entry_id,
+      device_id, disabled_by, modified_at - aber KEIN orphaned_timestamp.
+    - registry.deleted_entities: DeletedRegistryEntry-Objekte für bereits von
+      HA selbst als gelöscht markierte Entitäten, die HA automatisch nach
+      ORPHANED_ENTITY_KEEP_SECONDS (Standard: 30 Tage) endgültig entfernt.
+      NUR hier existiert orphaned_timestamp wirklich.
 
     Args:
         strict_mode: Zusätzliche Warnung für Entitäten mit platform aber
             ohne device_id (nur wenn bereits aus anderem Grund verwaist).
-        min_orphan_age_hours: Mindestalter in Stunden, bevor ein per
-            orphaned_timestamp erkannter Orphan gemeldet wird. Verhindert
-            False Positives kurz nach einem Neustart/Reload, wenn sich
-            Integrationen noch neu verknüpfen. 0 = altes Verhalten
-            (sofort melden).
-        aggressive_heuristic: Zusätzliche, unabhängige Heuristik (kein
-            Ersatz für strict_mode). Meldet Entitäten, die manuell
-            deaktiviert (disabled_by gesetzt) UND seit mindestens
-            min_orphan_age_hours nicht mehr verändert wurden
-            (modified_at), auch wenn sie noch an eine config_entry/device
-            gebunden sind. Höheres False-Positive-Risiko als die
-            Standard-Erkennung, deshalb bewusst optional.
+        min_orphan_age_hours: Mindestalter in Stunden, bevor ein Eintrag
+            gemeldet wird (gilt für disabled_long_term und pending_purge).
+            0 = altes Verhalten (sofort melden).
+        aggressive_heuristic: Zusätzliche, unabhängige Heuristik. Meldet
+            aktive Entitäten, die manuell deaktiviert (disabled_by gesetzt)
+            UND seit mindestens min_orphan_age_hours nicht mehr verändert
+            wurden (modified_at). Höheres False-Positive-Risiko.
     """
     registry = er.async_get(hass)
     results: list[dict[str, Any]] = []
     now = datetime.now(timezone.utc).timestamp()
     min_age_seconds = min_orphan_age_hours * 3600
 
+    # ===== 1) Aktive Entitäten ohne Verknüpfung zu config_entry/device =====
     for entry in registry.entities.values():
-        orphaned_timestamp = entry.orphaned_timestamp
         no_links = entry.config_entry_id is None and entry.device_id is None
 
         reasons: list[str] = []
-
-        if orphaned_timestamp:
-            age_seconds = now - orphaned_timestamp
-            if age_seconds >= min_age_seconds:
-                reasons.append("orphaned_timestamp_exists")
-
         if no_links:
             reasons.append("no_config_or_device")
 
-        # STRICT-MODE: zusätzliche Prüfung, nur relevant wenn die Entität
-        # bereits aus einem der obigen Gründe als verwaist gilt.
+        # STRICT-MODE: zusätzliche Warnung, nur relevant wenn bereits aus
+        # anderem Grund verwaist.
         if strict_mode and reasons and entry.platform and entry.device_id is None:
             reasons.append("platform_without_device")
 
@@ -81,9 +78,44 @@ async def async_find_orphans(
                 "platform": entry.platform or "unknown",
                 "reason": ", ".join(reasons),
                 "orphaned_reason": reasons,
-                "orphaned_timestamp": orphaned_timestamp,
+                "orphaned_timestamp": None,
                 "config_entry_id": entry.config_entry_id,
                 "device_id": entry.device_id,
+                "pending_purge": False,
+            }
+        )
+
+    # ===== 2) Von HA bereits als gelöscht markierte Entitäten =====
+    # Rein informativ: HA räumt diese automatisch nach ~30 Tagen selbst auf.
+    # Diese Einträge existieren NICHT mehr in registry.entities und können
+    # daher über delete_selected nicht gefunden/gelöscht werden (fallen dort
+    # korrekt, aber etwas ungenau benannt, unter "not_found").
+    for deleted_entry in registry.deleted_entities.values():
+        orphaned_timestamp = deleted_entry.orphaned_timestamp
+        if orphaned_timestamp is None:
+            continue
+
+        age_seconds = now - orphaned_timestamp
+        if age_seconds < min_age_seconds:
+            continue
+
+        # getattr mit Fallback, da das Feldset von DeletedRegistryEntry sich
+        # zwischen HA-Versionen unterscheidet (z.B. "name" existiert nicht in
+        # allen Versionen) - entity_id/platform/config_entry_id/
+        # orphaned_timestamp sind über alle geprüften Versionen hinweg stabil.
+        name = getattr(deleted_entry, "name", None) or deleted_entry.entity_id
+
+        results.append(
+            {
+                "entity_id": deleted_entry.entity_id,
+                "name": name,
+                "platform": deleted_entry.platform or "unknown",
+                "reason": "pending_purge_by_ha",
+                "orphaned_reason": ["pending_purge_by_ha"],
+                "orphaned_timestamp": orphaned_timestamp,
+                "config_entry_id": deleted_entry.config_entry_id,
+                "device_id": None,
+                "pending_purge": True,
             }
         )
 

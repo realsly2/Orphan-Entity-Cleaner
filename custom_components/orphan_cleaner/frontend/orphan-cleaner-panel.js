@@ -129,9 +129,9 @@ class OrphanCleanerPanel extends HTMLElement {
             .map(
               (x) => `
             <tr>
-              <td><input type="checkbox" data-entity="${x.entity_id}"></td>
+              <td>${x.pending_purge ? "" : `<input type="checkbox" data-entity="${x.entity_id}">`}</td>
               <td>${x.entity_id || ""}</td>
-              <td>${x.name || ""}</td>
+              <td>${x.name || ""}${x.pending_purge ? " <em>(wird von HA automatisch entfernt)</em>" : ""}</td>
               <td>${x.platform || ""}</td>
               <td>${x.reason || ""}</td>
               <td class="oc-small">${x.config_entry_id || ""}</td>

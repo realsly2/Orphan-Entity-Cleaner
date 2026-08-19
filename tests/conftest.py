@@ -21,9 +21,23 @@ class FakeEntityEntry:
     modified_at: object | None = None
 
 
+@dataclass
+class FakeDeletedEntityEntry:
+    entity_id: str
+    name: str | None = None
+    platform: str | None = None
+    config_entry_id: str | None = None
+    orphaned_timestamp: float | None = None
+
+
 class FakeRegistry:
-    def __init__(self, entities: dict[str, FakeEntityEntry]):
+    def __init__(
+        self,
+        entities: dict[str, FakeEntityEntry],
+        deleted_entities: dict[str, FakeDeletedEntityEntry] | None = None,
+    ):
         self.entities = entities
+        self.deleted_entities = deleted_entities or {}
         self.removed: list[str] = []
 
     def async_get(self, entity_id: str):

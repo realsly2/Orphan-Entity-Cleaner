@@ -1,14 +1,6 @@
-// custom_components/orphan_cleaner/frontend/orphan-cleaner-panel.js
 //
 // Panel-Custom-Element für Orphan Cleaner.
 //
-// Wichtig: Home Assistant setzt auf dieses Element die Property `hass`
-// (nicht ein HTML-Attribut). Dieses hass-Objekt ist bereits authentifiziert -
-// hass.callService() / hass.callApi() hängen den Bearer-Token automatisch an.
-// Dadurch brauchen wir hier keine eigene fetch()/Token-Logik mehr, im
-// Unterschied zum vorherigen iframe-Ansatz (der still mit 401 gescheitert
-// wäre, da HAs /api/* Endpunkte weder Cookies noch unauthentifizierte
-// iframe-Navigation akzeptieren).
 
 class OrphanCleanerPanel extends HTMLElement {
   constructor() {
@@ -63,9 +55,12 @@ class OrphanCleanerPanel extends HTMLElement {
           <button id="oc-scan">Scan</button>
           <button id="oc-refresh">Refresh</button>
           <button id="oc-backup">Backup</button>
+          <button id="oc-download">Download Backup</button>
+          <button id="oc-restore">Restore Backup</button>
           <button id="oc-export">Export</button>
           <button id="oc-clear">Clear</button>
           <button id="oc-delete" class="oc-danger">Delete Selected</button>
+          <input type="file" id="oc-restore-file" accept=".json" style="display: none;" />
           <span class="oc-spacer"></span>
           <input id="oc-q" type="text" placeholder="Search entity_id, name, platform" />
         </div>
@@ -83,6 +78,9 @@ class OrphanCleanerPanel extends HTMLElement {
     this.querySelector("#oc-scan").addEventListener("click", () => this._scan());
     this.querySelector("#oc-refresh").addEventListener("click", () => this._refreshResults());
     this.querySelector("#oc-backup").addEventListener("click", () => this._backup());
+    this.querySelector("#oc-download").addEventListener("click", () => this._downloadBackup());
+    this.querySelector("#oc-restore").addEventListener("click", () => this.querySelector("#oc-restore-file").click());
+    this.querySelector("#oc-restore-file").addEventListener("change", (e) => this._restoreBackup(e));
     this.querySelector("#oc-export").addEventListener("click", () => this._exportResults());
     this.querySelector("#oc-clear").addEventListener("click", () => this._clearResults());
     this.querySelector("#oc-delete").addEventListener("click", () => this._deleteSelected());
@@ -190,6 +188,66 @@ class OrphanCleanerPanel extends HTMLElement {
     } catch (err) {
       this._setStatus(`Backup failed: ${err}`);
     }
+  }
+
+  async _downloadBackup() {
+    this._setStatus("Downloading backup...");
+    try {
+      const res = await this.hass.callWS({ type: "orphan_cleaner/download_backup" });
+      const dataStr = JSON.stringify(res.data, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = url;
+      a.download = res.filename || "orphan_cleaner_backup.json";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      this._setStatus(`Downloaded: ${res.filename}`);
+    } catch (err) {
+      this._setStatus(`Download failed: ${err.message || err}`);
+    }
+  }
+
+  async _restoreBackup(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    this._setStatus("Reading restore file...");
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const jsonContent = JSON.parse(e.target.result);
+        const entities = Array.isArray(jsonContent) ? jsonContent : (jsonContent.results || jsonContent.entities || []);
+
+        if (!entities.length) {
+          this._setStatus("Restore failed: No entities found in file");
+          return;
+        }
+
+        const confirmed = window.confirm(`Restore ${entities.length} entities from backup file?`);
+        if (!confirmed) {
+          this._setStatus("Restore cancelled");
+          return;
+        }
+
+        this._setStatus("Restoring entities...");
+        const res = await this.hass.callWS({
+          type: "orphan_cleaner/restore_backup",
+          entities: entities,
+        });
+
+        this._setStatus(`Restore finished: ${res.restored} entities restored`);
+        await this._refreshResults();
+      } catch (err) {
+        this._setStatus(`Restore failed: ${err.message || err}`);
+      } finally {
+        event.target.value = "";
+      }
+    };
+    reader.readAsText(file);
   }
 
   async _exportResults() {

@@ -78,7 +78,29 @@ After setup, you will find the Orphan Cleaner panel in your sidebar.
 
 ### Detection Logic
 
-An entity is marked as orphaned if orphaned_timestamp exists in its attributes, OR both config_entry_id and device_id are None (no connection to a configuration or device). When the scan is called with strict_mode: true, additional checks are performed: entities with a platform reference but without device_id are marked as a warning (orphaned_reason contains "platform_without_device"). This helps identify potentially problematic entities that might be orphaned under certain circumstances.
+An entity is flagged if it has no config_entry_id AND no device_id (`no_config_or_device`). With `strict_mode: true`, entities with a platform reference but no device_id get an extra warning tag (`platform_without_device`) alongside another reason. With `aggressive_heuristic: true`, entities that were manually disabled and haven't been modified for at least `min_orphan_age_hours` are also flagged (`disabled_long_term`). Entities Home Assistant has already internally deleted and will auto-purge within ~30 days show up too (`pending_purge_by_ha`) - purely informational, not actionable here.
+
+### How do I know what's safe to delete?
+
+**Nothing here is a guarantee - every signal is a heuristic, not a certainty.** Each result comes with a risk badge and a plain-language hint explaining exactly why it was flagged and what to double-check before deleting:
+
+- **`no_config_or_device`** (⚠️ Review): The strongest signal, but can also be a perfectly intentional YAML-defined entity (old-style template sensor, group, zone, input helper) that never has a config_entry_id/device_id by design. Check if the entity_id/name/domain looks familiar before deleting.
+- **`platform_without_device`** (⚠️ Review): A weaker add-on signal, only shown alongside another reason.
+- **`disabled_long_term`** (🟠 Review): A person already disabled it manually - but "disabled" isn't the same as "safe to permanently delete"; they might want it back later.
+- **`pending_purge_by_ha`** (✅ No action needed): Home Assistant already deleted this internally and will remove it permanently on its own. Not deletable here - just informational.
+
+Use the search box and the reason filter dropdown in the panel to narrow down what you're looking at, and read the hint text under each entry before selecting it.
+
+### Where are backups stored, and how do I restore?
+
+Every deletion automatically writes a backup **before** deleting, into a dedicated subfolder: `<config>/orphan_cleaner_backups/orphan_cleaner_backup_<timestamp>.json` (e.g. `/config/orphan_cleaner_backups/...`) - not directly in your config root.
+
+**What "restore" actually means in Home Assistant:** Home Assistant doesn't hard-delete entities immediately. `delete_selected` calls the registry's soft-delete, which moves the entry into an internal "pending purge" bucket for about 30 days before Home Assistant removes it permanently on its own. During that window:
+
+- Click **"Backups anzeigen"** in the panel (or call the `orphan_cleaner.list_backups` service) to see available backup files.
+- Click **"Restore"** next to a backup entry (or call `orphan_cleaner.restore_from_backup` with the filename) to recreate a registry entry for entities that don't currently exist. This uses the same mechanism Home Assistant itself uses when an integration re-registers an entity, so it gets the **same entity_id** back.
+- **Limits, stated honestly:** only `entity_id`, `name`, and the platform/unique_id link get restored. State history, statistics, area assignment, and icon are *not* restored - Home Assistant's own registry doesn't support restoring those outside of the original integration reconnecting. If you need those back, you'll need to reapply them manually (the backup JSON still has the info to remind you what they were).
+- Already-existing entities are always skipped during restore, never overwritten.
 
 ### Allowlist (Protection List)
 
@@ -96,12 +118,14 @@ To retrieve the current allowlist, use the service: curl -X POST http://homeassi
 
 The following services are available:
 
-- orphan_cleaner.scan: Starts a new scan (optionally with strict_mode: true)
+- orphan_cleaner.scan: Starts a new scan (optional: strict_mode, min_orphan_age_hours, aggressive_heuristic)
 - orphan_cleaner.delete_selected: Deletes the selected entities (requires entity_ids parameter)
 - orphan_cleaner.clear_results: Clears the saved scan results
 - orphan_cleaner.export_results: Exports the results as a JSON file
 - orphan_cleaner.backup_results: Creates a backup of the results
 - orphan_cleaner.get_allowlist: Returns the current allowlist (for debugging)
+- orphan_cleaner.list_backups: Lists available backup files with their entry counts
+- orphan_cleaner.restore_from_backup: Restores entities from a backup file (see limits above)
 
 Service Examples:
 
@@ -117,11 +141,16 @@ data:
     - sensor.old_device
     - binary_sensor.unused_sensor
 
+Restore from a backup:
+service: orphan_cleaner.restore_from_backup
+data:
+  filename: orphan_cleaner_backup_20260821T060000Z.json
+
 ### API Endpoints
 
-- GET /api/orphan_cleaner/results: Retrieve all scan results (with pagination)
+- GET /api/orphan_cleaner/results: Retrieve all scan results (with pagination), plus backups/last_backup_path/last_restore
 - DELETE /api/orphan_cleaner/results: Delete all results
-- GET /orphan-cleaner: The sidebar panel (HTML)
+- GET /orphan-cleaner: The sidebar panel
 
 Pagination:
 
@@ -133,7 +162,10 @@ The response includes metadata:
   "total": 150,
   "offset": 20,
   "limit": 10,
-  "results": [ ... ]
+  "results": [ ... ],
+  "backups": [ ... ],
+  "last_backup_path": "/config/orphan_cleaner_backups/orphan_cleaner_backup_....json",
+  "last_restore": null
 }
 
 ### Troubleshooting
@@ -144,7 +176,7 @@ Entities cannot be deleted? Check if they are on the allowlist, if they have a c
 
 API returns 404? The integration must be correctly installed and active. Check the URL: http://[your-IP]:8123/api/orphan_cleaner/results and restart Home Assistant.
 
-Backup is not created? Check write permissions in the Home Assistant configuration directory – the folder must be writable.
+Backup is not created? Check write permissions in the Home Assistant configuration directory - the orphan_cleaner_backups subfolder must be creatable/writable.
 
 ### Development
 
@@ -243,7 +275,29 @@ Nach der Einrichtung findest du das Orphan Cleaner-Panel in deiner Seitenleiste.
 
 ### Erkennungslogik
 
-Eine Entität wird als verwaist markiert, wenn entweder orphaned_timestamp im Attribut vorhanden ist, oder sowohl config_entry_id als auch device_id None sind (keine Verbindung zu einer Konfiguration oder einem Gerät). Wenn der Scan mit strict_mode: true aufgerufen wird, werden zusätzliche Prüfungen durchgeführt: Entitäten mit einer Plattform-Referenz aber ohne device_id werden als Warnung markiert (orphaned_reason enthält "platform_without_device"). Dies hilft, potenziell problematische Entitäten zu identifizieren, die unter bestimmten Umständen verwaist sein könnten.
+Eine Entität wird markiert, wenn sie weder config_entry_id noch device_id hat (`no_config_or_device`). Mit `strict_mode: true` bekommen Entitäten mit Plattform-Referenz aber ohne device_id zusätzlich eine Warnung (`platform_without_device`), immer nur zusammen mit einem anderen Grund. Mit `aggressive_heuristic: true` werden zusätzlich manuell deaktivierte Entitäten gemeldet, die seit mindestens `min_orphan_age_hours` nicht verändert wurden (`disabled_long_term`). Entitäten, die Home Assistant bereits intern gelöscht hat und die innerhalb von ca. 30 Tagen automatisch endgültig entfernt werden, erscheinen ebenfalls (`pending_purge_by_ha`) - rein informativ, hier nicht aktionierbar.
+
+### Woher weiß ich, was ich gefahrlos löschen kann?
+
+**Nichts hier ist eine Garantie – jedes Signal ist eine Heuristik, keine Gewissheit.** Jedes Ergebnis hat ein Risiko-Badge und einen Klartext-Hinweis, warum es erkannt wurde und was du vorher prüfen solltest:
+
+- **`no_config_or_device`** (⚠️ Prüfen): Das stärkste Signal, kann aber auch eine bewusst per YAML angelegte Entität sein (alter Template-Sensor, Gruppe, Zone, Helper), die konstruktionsbedingt nie eine config_entry_id/device_id hat. Prüfe, ob dir entity_id/Name/Domain bekannt vorkommen, bevor du löschst.
+- **`platform_without_device`** (⚠️ Prüfen): Ein schwächeres Zusatzsignal, tritt nur zusammen mit einem anderen Grund auf.
+- **`disabled_long_term`** (🟠 Prüfen): Ein Mensch hat sie bereits manuell deaktiviert – aber "deaktiviert" heißt nicht automatisch "kann dauerhaft weg"; vielleicht wird sie später wieder gebraucht.
+- **`pending_purge_by_ha`** (✅ Keine Aktion nötig): Home Assistant hat diese Entität bereits intern gelöscht und entfernt sie von selbst endgültig. Hier nicht löschbar – nur zur Information.
+
+Nutze die Suche und den Grund-Filter im Panel, um die Liste einzugrenzen, und lies den Hinweistext unter jedem Eintrag, bevor du ihn auswählst.
+
+### Wohin wird das Backup gespeichert, und wie stelle ich wieder her?
+
+Jede Löschung schreibt automatisch **vor** dem Löschen ein Backup, in einen eigenen Unterordner: `<config>/orphan_cleaner_backups/orphan_cleaner_backup_<Zeitstempel>.json` (z.B. `/config/orphan_cleaner_backups/...`) – nicht direkt in deinem config-Root.
+
+**Was "Wiederherstellen" in Home Assistant technisch bedeutet:** Home Assistant löscht Entitäten nicht sofort hart. `delete_selected` nutzt das Soft-Delete der Registry, das den Eintrag zunächst für ca. 30 Tage in einen internen "wartet auf endgültige Entfernung"-Zustand verschiebt, bevor Home Assistant ihn von selbst endgültig entfernt. In diesem Zeitfenster:
+
+- Klicke im Panel auf **"Backups anzeigen"** (oder rufe den Service `orphan_cleaner.list_backups` auf), um verfügbare Backup-Dateien zu sehen.
+- Klicke bei einem Backup-Eintrag auf **"Restore"** (oder rufe `orphan_cleaner.restore_from_backup` mit dem Dateinamen auf), um für aktuell nicht existierende Entitäten wieder einen Registry-Eintrag anzulegen. Das nutzt denselben Mechanismus, den Home Assistant selbst verwendet, wenn eine Integration eine Entität neu registriert – du bekommst also dieselbe entity_id zurück.
+- **Grenzen, ehrlich benannt:** Nur entity_id, Name und die Plattform-/unique_id-Verknüpfung werden wiederhergestellt. Zustandsverlauf, Statistiken, Bereichszuordnung und Icon werden **nicht** wiederhergestellt – das unterstützt die Home-Assistant-Registry außerhalb einer echten Neu-Registrierung durch die ursprüngliche Integration schlicht nicht. Falls du das brauchst, musst du es manuell nachtragen (die Backup-JSON-Datei zeigt dir immerhin, was es vorher war).
+- Bereits existierende Entitäten werden beim Restore immer übersprungen, nie überschrieben.
 
 ### Allowlist (Schutzliste)
 
@@ -261,12 +315,14 @@ Um die aktuelle Allowlist abzurufen, nutze den Service: curl -X POST http://home
 
 Die folgenden Services stehen zur Verfügung:
 
-- orphan_cleaner.scan: Startet einen neuen Scan (optional mit strict_mode: true)
+- orphan_cleaner.scan: Startet einen neuen Scan (optional: strict_mode, min_orphan_age_hours, aggressive_heuristic)
 - orphan_cleaner.delete_selected: Löscht die ausgewählten Entitäten (erfordert entity_ids-Parameter)
 - orphan_cleaner.clear_results: Löscht die gespeicherten Scan-Ergebnisse
 - orphan_cleaner.export_results: Exportiert die Ergebnisse als JSON-Datei
 - orphan_cleaner.backup_results: Erstellt ein Backup der Ergebnisse
 - orphan_cleaner.get_allowlist: Gibt die aktuelle Allowlist zurück (für Debugging)
+- orphan_cleaner.list_backups: Listet verfügbare Backup-Dateien mit Anzahl der Einträge
+- orphan_cleaner.restore_from_backup: Stellt Entitäten aus einer Backup-Datei wieder her (siehe Grenzen oben)
 
 Service-Beispiele:
 
@@ -282,11 +338,16 @@ data:
     - sensor.old_device
     - binary_sensor.unused_sensor
 
+Aus einem Backup wiederherstellen:
+service: orphan_cleaner.restore_from_backup
+data:
+  filename: orphan_cleaner_backup_20260821T060000Z.json
+
 ### API-Endpunkte
 
-- GET /api/orphan_cleaner/results: Alle Scan-Ergebnisse abrufen (mit Paginierung)
+- GET /api/orphan_cleaner/results: Alle Scan-Ergebnisse abrufen (mit Paginierung), zusätzlich backups/last_backup_path/last_restore
 - DELETE /api/orphan_cleaner/results: Alle Ergebnisse löschen
-- GET /orphan-cleaner: Das Sidebar-Panel (HTML)
+- GET /orphan-cleaner: Das Sidebar-Panel
 
 Paginierung:
 
@@ -298,7 +359,10 @@ Die Antwort enthält Metadaten:
   "total": 150,
   "offset": 20,
   "limit": 10,
-  "results": [ ... ]
+  "results": [ ... ],
+  "backups": [ ... ],
+  "last_backup_path": "/config/orphan_cleaner_backups/orphan_cleaner_backup_....json",
+  "last_restore": null
 }
 
 ### Fehlerbehebung
@@ -309,7 +373,7 @@ Entitäten lassen sich nicht löschen? Prüfe, ob sie in der Allowlist stehen, o
 
 API gibt 404 zurück? Die Integration muss korrekt installiert und aktiviert sein. Prüfe die URL: http://[deine-IP]:8123/api/orphan_cleaner/results und starte Home Assistant neu.
 
-Backup wird nicht erstellt? Prüfe die Schreibrechte im Home Assistant Konfigurationsverzeichnis – der Ordner muss beschreibbar sein.
+Backup wird nicht erstellt? Prüfe die Schreibrechte im Home Assistant Konfigurationsverzeichnis – der Unterordner orphan_cleaner_backups muss anlegbar/beschreibbar sein.
 
 ### Entwicklung
 

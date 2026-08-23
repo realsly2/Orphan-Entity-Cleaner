@@ -12,6 +12,8 @@ import pytest
 @dataclass
 class FakeEntityEntry:
     entity_id: str
+    unique_id: str = "fake-unique-id"
+    domain: str = field(init=False)
     original_name: str | None = None
     platform: str | None = None
     config_entry_id: str | None = None
@@ -19,6 +21,12 @@ class FakeEntityEntry:
     orphaned_timestamp: float | None = None
     disabled_by: str | None = None
     modified_at: object | None = None
+    area_id: str | None = None
+    icon: str | None = None
+    original_icon: str | None = None
+
+    def __post_init__(self):
+        self.domain = self.entity_id.split(".", 1)[0]
 
 
 @dataclass
@@ -56,7 +64,7 @@ class FakeHass:
     def __init__(self, registry: FakeRegistry, config_dir: Path):
         self.data: dict[str, Any] = {}
         self._registry = registry
-        self.config = SimpleNamespace(path=lambda name: str(config_dir / name))
+        self.config = SimpleNamespace(path=lambda *names: str(Path(config_dir, *names)))
         self.services = FakeServices()
 
     async def async_add_executor_job(self, func, *args):

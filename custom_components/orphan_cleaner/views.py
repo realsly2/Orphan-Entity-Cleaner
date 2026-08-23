@@ -54,6 +54,9 @@ class OrphanCleanerResultsView(HomeAssistantView):
             "offset": offset,
             "limit": limit,
             "results": paginated_results,
+            "backups": data.get("backups", []),
+            "last_backup_path": data.get("last_backup_path"),
+            "last_restore": data.get("last_restore"),
         }
 
         return self.json(response_data)

@@ -77,6 +77,18 @@ class FakeCall:
         self.data = data or {}
 
 
+class FakeRequest:
+    def __init__(self, hass: FakeHass, is_admin: bool):
+        self.app = {"hass": hass}
+        self.query = {}
+        self._hass_user = SimpleNamespace(is_admin=is_admin)
+
+    def get(self, key: str, default=None):
+        if key == "hass_user":
+            return self._hass_user
+        return default
+
+
 @pytest.fixture
 def fake_registry():
     return FakeRegistry({})

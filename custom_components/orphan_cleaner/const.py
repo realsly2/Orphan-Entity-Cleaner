@@ -1,6 +1,6 @@
 DOMAIN = "orphan_cleaner"
 NAME = "Orphan Cleaner"
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 
 PANEL_URL = "/orphan-cleaner"
 PANEL_TITLE = "Orphan Cleaner"

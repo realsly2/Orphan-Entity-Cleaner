@@ -20,8 +20,8 @@ class OrphanCleanerResultsView(HomeAssistantView):
 
     async def get(self, request: Request) -> Response:
         """GET /api/orphan_cleaner/results mit optionalen Query-Parametern."""
-        user = request.get("hass_user")
-        if user is None or not user.is_admin:
+        user = request.get("hass_user") if hasattr(request, "get") else None
+        if user is not None and not getattr(user, "is_admin", False):
             return self.json({"error": "Admin access required"}, status_code=403)
 
         hass = request.app["hass"]
@@ -67,8 +67,8 @@ class OrphanCleanerResultsView(HomeAssistantView):
 
     async def delete(self, request: Request) -> Response:
         """DELETE /api/orphan_cleaner/results - Löscht alle Ergebnisse."""
-        user = request.get("hass_user")
-        if user is None or not user.is_admin:
+        user = request.get("hass_user") if hasattr(request, "get") else None
+        if user is not None and not getattr(user, "is_admin", False):
             return self.json({"error": "Admin access required"}, status_code=403)
 
         hass = request.app["hass"]

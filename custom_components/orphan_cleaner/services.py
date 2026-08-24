@@ -99,11 +99,20 @@ async def _async_write_backup(hass: HomeAssistant, results: list[dict],
     hass.data[DOMAIN][BACKUP_KEY] = payload
 
     filename = f"orphan_cleaner_backup_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json"
+    # Write backups into a dedicated subdirectory under the Home Assistant config path
+    backup_dir = Path(hass.config.path("orphan_cleaner_backups"))
+    target_path = backup_dir / filename
+
+    def _write_file(path_str: str, text: str):
+        p = Path(path_str)
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(text, encoding="utf-8")
+
     try:
         await hass.async_add_executor_job(
-            Path(hass.config.path(filename)).write_text,
+            _write_file,
+            str(target_path),
             json.dumps(payload, indent=2, ensure_ascii=False),
-            "utf-8",
         )
         _LOGGER.info("Backup created: %s", filename)
     except OSError as err:
@@ -156,10 +165,6 @@ async def async_delete_selected_service(call: ServiceCall) -> None:
             entry is not None and entry.config_entry_id is None and entry.device_id is None
         )
 
-        if entity_id not in deletable_ids and not current_is_orphan:
-            not_found.append(entity_id)
-            continue
-
         # 1. Prüfe, ob die Entität existiert
         if entry is None:
             not_found.append(entity_id)
@@ -177,19 +182,26 @@ async def async_delete_selected_service(call: ServiceCall) -> None:
             _LOGGER.info("Protected by config_entry_id: %s", entity_id)
             continue
 
-        # 4. Backup-Daten sammeln
+        # 4. Prüfe, ob die Entität überhaupt zur Löschung vorgesehen ist (Scan oder aktueller Orphan-Status)
+        if entity_id not in deletable_ids and not current_is_orphan:
+            not_found.append(entity_id)
+            continue
+
+        # 5. Backup-Daten sammeln
         backup_data.append({
             "entity_id": entry.entity_id,
             "name": entry.original_name or entry.entity_id,
             "platform": entry.platform or "unknown",
             "config_entry_id": entry.config_entry_id,
             "device_id": entry.device_id,
+            "unique_id": getattr(entry, "unique_id", None),
+            "domain": getattr(entry, "domain", entry.entity_id.split('.', 1)[0]),
         })
 
         if dry_run:
             continue
 
-        # 5. Löschversuch mit Fehlerbehandlung
+        # 6. Löschversuch mit Fehlerbehandlung
         try:
             registry.async_remove(entity_id)
             deleted.append(entity_id)
@@ -291,3 +303,99 @@ def async_register_services(hass: HomeAssistant) -> None:
         }),
         supports_response=SupportsResponse.ONLY,
     )
+
+    # Backup-related services
+    hass.services.async_register(DOMAIN, "list_backups", async_list_backups_service)
+    hass.services.async_register(
+        DOMAIN,
+        "restore_from_backup",
+        async_restore_from_backup_service,
+        schema=vol.Schema({vol.Required("filename"): str}),
+    )
+
+
+# ===== Services for backup listing and restore =====
+async def async_list_backups_service(call: ServiceCall) -> None:
+    """List backup files in the configured backup directory and store summary in hass.data."""
+    hass = call.hass
+    hass.data.setdefault(DOMAIN, {})
+    backup_dir = Path(hass.config.path("orphan_cleaner_backups"))
+    backups_summary: list[dict] = []
+
+    if not backup_dir.exists() or not backup_dir.is_dir():
+        hass.data[DOMAIN]["backups"] = backups_summary
+        return
+
+    for p in sorted(backup_dir.glob("orphan_cleaner_backup_*.json")):
+        try:
+            payload = json.loads(p.read_text(encoding="utf-8"))
+            results = payload.get("results") or []
+            backups_summary.append({"filename": p.name, "count": len(results)})
+        except Exception:  # pragma: no cover - defensive
+            backups_summary.append({"filename": p.name, "count": 0})
+
+    hass.data[DOMAIN]["backups"] = backups_summary
+
+
+async def async_restore_from_backup_service(call: ServiceCall) -> None:
+    """Restore entities from a named backup file located in the configured backup directory.
+
+    The function rejects path-traversal attempts and missing files silently (no last_restore set).
+    """
+    hass = call.hass
+    hass.data.setdefault(DOMAIN, {})
+    filename = (call.data or {}).get("filename")
+    if not filename or Path(filename).name != filename or ".." in filename:
+        _LOGGER.warning("Refusing to restore from suspicious filename: %s", filename)
+        return
+
+    backup_path = Path(hass.config.path("orphan_cleaner_backups", filename))
+    if not backup_path.exists() or not backup_path.is_file():
+        _LOGGER.warning("Backup file not found: %s", backup_path)
+        return
+
+    try:
+        payload = json.loads(backup_path.read_text(encoding="utf-8"))
+    except Exception as err:
+        _LOGGER.error("Failed to read backup file %s: %s", backup_path, err)
+        return
+
+    results = payload.get("results") or []
+    registry = er.async_get(hass)
+    restored: list[str] = []
+    skipped_existing: list[str] = []
+    errors: list[dict] = []
+
+    for item in results:
+        entity_id = item.get("entity_id")
+        if not entity_id:
+            continue
+        # If already exists, skip
+        if registry.async_get(entity_id):
+            skipped_existing.append(entity_id)
+            continue
+
+        domain = item.get("domain") or entity_id.split(".", 1)[0]
+        suggested_object_id = entity_id.split(".", 1)[1] if "." in entity_id else None
+        unique_id = item.get("unique_id")
+        platform = item.get("platform")
+        original_name = item.get("name")
+
+        try:
+            created = registry.async_get_or_create(
+                domain=domain,
+                platform=platform,
+                unique_id=unique_id,
+                suggested_object_id=suggested_object_id,
+                original_name=original_name,
+            )
+            restored.append(created.entity_id)
+        except Exception as err:  # pragma: no cover - defensive
+            errors.append({"entity_id": entity_id, "error": str(err)})
+
+    if restored or skipped_existing or errors:
+        hass.data[DOMAIN]["last_restore"] = {
+            "restored": restored,
+            "skipped_existing": skipped_existing,
+            "errors": errors,
+        }

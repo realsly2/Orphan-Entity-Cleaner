@@ -26,6 +26,23 @@ def _is_admin(connection: websocket_api.ActiveConnection) -> bool:
     return user is not None and user.is_admin
 
 
+def _find_latest_backup_path(hass: HomeAssistant) -> str | None:
+    """Findet das neueste Backup sowohl im Root als auch im Unterordner."""
+    candidate_dirs = [
+        hass.config.path(),
+        hass.config.path("orphan_cleaner_backups"),
+    ]
+    backup_files: list[str] = []
+    for directory in candidate_dirs:
+        backup_files.extend(glob.glob(os.path.join(directory, "orphan_cleaner_backup_*.json")))
+
+    if not backup_files:
+        return None
+
+    backup_files = sorted(set(backup_files), key=os.path.getctime, reverse=True)
+    return backup_files[0]
+
+
 @websocket_api.websocket_command({
     vol.Required("type"): "orphan_cleaner/download_backup"
 })
@@ -36,14 +53,14 @@ async def ws_download_backup(hass: HomeAssistant, connection: websocket_api.Acti
         connection.send_error(msg["id"], "unauthorized", "Admin access required")
         return
 
-    config_dir = hass.config.path()
-    backup_files = glob.glob(os.path.join(config_dir, "orphan_cleaner_backup_*.json"))
-
-    if not backup_files:
-        connection.send_error(msg["id"], "not_found", "Keine Backup-Datei in /config/ gefunden.")
+    latest_backup = _find_latest_backup_path(hass)
+    if latest_backup is None:
+        connection.send_error(
+            msg["id"],
+            "not_found",
+            "Keine Backup-Datei in /config/ oder /config/orphan_cleaner_backups/ gefunden.",
+        )
         return
-
-    latest_backup = max(backup_files, key=os.path.getctime)
 
     def _read_file():
         with open(latest_backup, "r", encoding="utf-8") as f:

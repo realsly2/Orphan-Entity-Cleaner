@@ -119,8 +119,8 @@ async def test_delete_selected_skips_protected_and_deletes_unprotected(monkeypat
     assert registry.removed == ["sensor.delete"]
     summary = hass.data[DOMAIN][LAST_DELETED_KEY]
     assert summary["deleted"] == ["sensor.delete"]
-    assert summary["protected"] == ["sensor.keep"]
-    assert summary["not_found"] == ["zone.home", "sensor.missing"]
+    assert summary["protected"] == ["sensor.keep", "zone.home"]
+    assert summary["not_found"] == ["sensor.missing"]
     assert summary["errors"] == []
     assert list(tmp_path.glob("orphan_cleaner_backup_*.json"))
 
@@ -145,3 +145,56 @@ async def test_delete_selected_dry_run_does_not_remove_or_backup(monkeypatch, tm
     assert registry.removed == []
     assert hass.data[DOMAIN][LAST_DELETED_KEY]["would_delete"] == ["sensor.delete"]
     assert not list(tmp_path.glob("orphan_cleaner_backup_*.json"))
+
+
+@pytest.mark.asyncio
+async def test_delete_selected_creates_backup_before_removal(monkeypatch, tmp_path):
+    registry = FakeRegistry({
+        "sensor.delete": FakeEntityEntry(entity_id="sensor.delete"),
+    })
+    hass = FakeHass(registry, tmp_path)
+    hass.data = {DOMAIN: {RESULTS_KEY: [{"entity_id": "sensor.delete"}]}}
+    calls: list[str] = []
+
+    async def fake_write_backup(hass_arg, results, backup_type="deletion"):
+        calls.append("backup")
+        assert results == [{"entity_id": "sensor.delete", "name": "sensor.delete", "platform": "unknown", "config_entry_id": None, "device_id": None, "unique_id": "fake-unique-id", "domain": "sensor"}]
+
+    def fake_remove(entity_id):
+        calls.append("remove")
+        registry.removed.append(entity_id)
+
+    monkeypatch.setattr(
+        "custom_components.orphan_cleaner.services.er.async_get",
+        lambda hass_arg: registry,
+    )
+    monkeypatch.setattr(
+        "custom_components.orphan_cleaner.services._async_write_backup",
+        fake_write_backup,
+    )
+    monkeypatch.setattr(registry, "async_remove", fake_remove)
+
+    await async_delete_selected_service(FakeCall(hass, {"entity_ids": ["sensor.delete"]}))
+
+    assert calls == ["backup", "remove"]
+    assert registry.removed == ["sensor.delete"]
+
+
+@pytest.mark.asyncio
+async def test_delete_selected_protects_allowlisted_entities(monkeypatch, tmp_path):
+    registry = FakeRegistry({
+        "zone.home": FakeEntityEntry(entity_id="zone.home"),
+    })
+    hass = FakeHass(registry, tmp_path)
+    hass.data = {DOMAIN: {RESULTS_KEY: [{"entity_id": "sensor.delete"}]}}
+
+    monkeypatch.setattr(
+        "custom_components.orphan_cleaner.services.er.async_get",
+        lambda hass_arg: registry,
+    )
+
+    await async_delete_selected_service(FakeCall(hass, {"entity_ids": ["zone.home"]}))
+
+    assert registry.removed == []
+    assert hass.data[DOMAIN][LAST_DELETED_KEY]["protected"] == ["zone.home"]
+    assert hass.data[DOMAIN][LAST_DELETED_KEY]["not_found"] == []

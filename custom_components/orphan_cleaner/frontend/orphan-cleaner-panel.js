@@ -72,6 +72,7 @@ class OrphanCleanerPanel extends HTMLElement {
         </div>
 
         <div id="oc-app"></div>
+        <div id="oc-debug" class="oc-small" style="display:none; margin-top:12px; padding:8px; border:1px solid var(--divider-color, #ddd); background: var(--secondary-background-color, #f7f7f7); white-space: pre-wrap; word-break: break-word;"></div>
       </div>
     `;
 
@@ -92,6 +93,63 @@ class OrphanCleanerPanel extends HTMLElement {
   _setStatus(text) {
     const el = this.querySelector("#oc-status");
     if (el) el.textContent = text;
+  }
+
+  _setDebug(text) {
+    const el = this.querySelector("#oc-debug");
+    if (!el) return;
+    if (!text) {
+      el.style.display = "none";
+      el.textContent = "";
+      return;
+    }
+    el.textContent = text;
+    el.style.display = "block";
+  }
+
+  _stringifyErrorValue(value, depth = 0) {
+    if (value === null || value === undefined) return String(value ?? "undefined");
+    if (typeof value === "string") return value;
+    if (typeof value === "number" || typeof value === "boolean") return String(value);
+    if (typeof value === "function") return value.name || "function";
+    if (depth > 2) return "[object]";
+    if (Array.isArray(value)) {
+      return value.slice(0, 5).map((item) => this._stringifyErrorValue(item, depth + 1)).join(", ");
+    }
+    if (typeof value === "object") {
+      const entries = Object.entries(value).slice(0, 10);
+      if (!entries.length) return Object.prototype.toString.call(value);
+      return `{ ${entries
+        .map(([key, nested]) => `${key}: ${this._stringifyErrorValue(nested, depth + 1)}`)
+        .join(", ")} }`;
+    }
+    return String(value);
+  }
+
+  _formatError(error) {
+    if (!error) return "Unknown error";
+    console.error("Orphan Cleaner error:", error);
+    this._setDebug(this._stringifyErrorValue(error, 0));
+
+    if (typeof error === "string") return error;
+    if (error instanceof Error) return error.message || String(error);
+
+    const message = error?.message || error?.error || error?.details;
+    if (typeof message === "string" && message.trim()) return message;
+
+    const body = error?.body;
+    if (body) {
+      if (typeof body === "string" && body.trim()) return body;
+      if (body.error) return this._formatError(body.error);
+      return this._stringifyErrorValue(body);
+    }
+
+    if (error?.status) {
+      const statusText = error.statusText ? ` ${error.statusText}` : " request failed";
+      return `${error.status}${statusText}`;
+    }
+
+    return this._stringifyErrorValue(error);
   }
 
   _filtered() {
@@ -168,6 +226,7 @@ class OrphanCleanerPanel extends HTMLElement {
 
   async _refreshResults() {
     this._setStatus("Loading...");
+    this._setDebug("");
     try {
       const payload = await this.hass.callApi("GET", "orphan_cleaner/results");
       if (Array.isArray(payload)) {
@@ -179,7 +238,7 @@ class OrphanCleanerPanel extends HTMLElement {
       }
     } catch (err) {
       this._results = [];
-      this._setStatus(`Error loading results: ${err}`);
+      this._setStatus(`Error loading results: ${this._formatError(err)}`);
       return;
     }
     this._render();
@@ -190,7 +249,7 @@ class OrphanCleanerPanel extends HTMLElement {
     try {
       await this.hass.callService("orphan_cleaner", "scan", {});
     } catch (err) {
-      this._setStatus(`Scan failed: ${err}`);
+      this._setStatus(`Scan failed: ${this._formatError(err)}`);
       return;
     }
     await this._refreshResults();
@@ -202,7 +261,7 @@ class OrphanCleanerPanel extends HTMLElement {
       await this.hass.callService("orphan_cleaner", "backup_results", {});
       this._setStatus("Backup created");
     } catch (err) {
-      this._setStatus(`Backup failed: ${err}`);
+      this._setStatus(`Backup failed: ${this._formatError(err)}`);
     }
   }
 
@@ -271,7 +330,7 @@ class OrphanCleanerPanel extends HTMLElement {
       await this.hass.callService("orphan_cleaner", "export_results", {});
       this._setStatus("Export stored");
     } catch (err) {
-      this._setStatus(`Export failed: ${err}`);
+      this._setStatus(`Export failed: ${this._formatError(err)}`);
     }
   }
 
@@ -281,7 +340,7 @@ class OrphanCleanerPanel extends HTMLElement {
       this._results = [];
       this._render();
     } catch (err) {
-      this._setStatus(`Clear failed: ${err}`);
+      this._setStatus(`Clear failed: ${this._formatError(err)}`);
     }
   }
 
@@ -304,7 +363,7 @@ class OrphanCleanerPanel extends HTMLElement {
     try {
       await this.hass.callService("orphan_cleaner", "delete_selected", { entity_ids: ids });
     } catch (err) {
-      this._setStatus(`Delete failed: ${err}`);
+      this._setStatus(`Delete failed: ${this._formatError(err)}`);
       return;
     }
     await this._refreshResults();

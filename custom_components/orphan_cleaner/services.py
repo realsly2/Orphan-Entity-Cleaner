@@ -149,8 +149,9 @@ async def async_delete_selected_service(call: ServiceCall) -> None:
         if result.get("entity_id") and not result.get("pending_purge", False)
     }
 
-    # Ergebnisse für das Backup und die Rückmeldung sammeln
+    # Ergebnisse für das Backup und die Rückmeldung sammeln.
     backup_data = []
+    to_delete: list[tuple[str, object]] = []
     deleted = []
     protected = []
     not_found = []
@@ -161,9 +162,6 @@ async def async_delete_selected_service(call: ServiceCall) -> None:
         scan_result = next(
             (result for result in scan_results if result.get("entity_id") == entity_id),
             None,
-        )
-        current_is_orphan = bool(
-            entry is not None and entry.config_entry_id is None and entry.device_id is None
         )
 
         # 1. Prüfe, ob die Entität existiert
@@ -177,19 +175,19 @@ async def async_delete_selected_service(call: ServiceCall) -> None:
             _LOGGER.info("Protected by config_entry_id: %s", entity_id)
             continue
 
-        # 3. Allowlist prüfen - nur für Entitäten, die in der Scan-Ergebnisliste relevant sind
-        if entity_id in current_allowlist and (scan_result is not None or entity_id in deletable_ids):
+        # 3. Allowlist hat absolute Priorität und schützt die Entität immer.
+        if entity_id in current_allowlist:
             protected.append(entity_id)
             _LOGGER.info("Protected by allowlist: %s", entity_id)
             continue
 
-        # 4. Prüfe, ob die Entität überhaupt zur Löschung vorgesehen ist (nur gemeldete Scan-Ergebnisse gelten)
+        # 4. Prüfe, ob die Entität überhaupt zur Löschung vorgesehen ist
+        #    (nur gemeldete Scan-Ergebnisse gelten).
         if entity_id not in deletable_ids and scan_result is None:
             not_found.append(entity_id)
             continue
 
-        # 5. Backup-Daten sammeln
-        backup_data.append({
+        entity_entry = {
             "entity_id": entry.entity_id,
             "name": entry.original_name or entry.entity_id,
             "platform": entry.platform or "unknown",
@@ -197,25 +195,27 @@ async def async_delete_selected_service(call: ServiceCall) -> None:
             "device_id": entry.device_id,
             "unique_id": getattr(entry, "unique_id", None),
             "domain": getattr(entry, "domain", entry.entity_id.split('.', 1)[0]),
-        })
+        }
+        backup_data.append(entity_entry)
+        if not dry_run:
+            to_delete.append((entity_id, entry))
 
-        if dry_run:
-            continue
-
-        # 6. Löschversuch mit Fehlerbehandlung
-        try:
-            registry.async_remove(entity_id)
-            deleted.append(entity_id)
-            _LOGGER.info("Deleted: %s", entity_id)
-        except Exception as e:
-            errors.append({"entity_id": entity_id, "error": str(e)})
-            _LOGGER.error("Failed to delete %s: %s", entity_id, e)
-
-    # Backup erstellen (auch wenn nichts gelöscht wurde, für Transparenz)
+    # Backup vor dem eigentlichen Entfernen erzeugen, damit keine Löschung ohne
+    # Sicherung erfolgen kann.
     if backup_data and not dry_run:
         await _async_write_backup(hass, backup_data, backup_type="deletion")
-    else:
+    elif not dry_run:
         _LOGGER.info("No entities to back up for deletion.")
+
+    if not dry_run:
+        for entity_id, _entry in to_delete:
+            try:
+                registry.async_remove(entity_id)
+                deleted.append(entity_id)
+                _LOGGER.info("Deleted: %s", entity_id)
+            except Exception as exc:
+                errors.append({"entity_id": entity_id, "error": str(exc)})
+                _LOGGER.error("Failed to delete %s: %s", entity_id, exc)
 
     # Ergebnisse speichern (für das Frontend)
     hass.data[DOMAIN][LAST_DELETED_KEY] = {
@@ -226,7 +226,7 @@ async def async_delete_selected_service(call: ServiceCall) -> None:
         "errors": errors,
         "dry_run": dry_run,
     }
-    
+
     # Zusammenfassung loggen
     _LOGGER.info(
         "Deletion summary: %d deleted, %d protected, %d not found, %d errors",
@@ -320,20 +320,24 @@ async def async_list_backups_service(call: ServiceCall) -> None:
     """List backup files in the configured backup directory and store summary in hass.data."""
     hass = call.hass
     hass.data.setdefault(DOMAIN, {})
+    root_dir = Path(hass.config.path())
     backup_dir = Path(hass.config.path("orphan_cleaner_backups"))
     backups_summary: list[dict] = []
+    seen: set[Path] = set()
 
-    if not backup_dir.exists() or not backup_dir.is_dir():
-        hass.data[DOMAIN]["backups"] = backups_summary
-        return
-
-    for p in sorted(backup_dir.glob("orphan_cleaner_backup_*.json")):
-        try:
-            payload = json.loads(p.read_text(encoding="utf-8"))
-            results = payload.get("results") or []
-            backups_summary.append({"filename": p.name, "count": len(results)})
-        except Exception:  # pragma: no cover - defensive
-            backups_summary.append({"filename": p.name, "count": 0})
+    for search_dir in (root_dir, backup_dir):
+        if not search_dir.exists() or not search_dir.is_dir():
+            continue
+        for p in sorted(search_dir.glob("orphan_cleaner_backup_*.json")):
+            if p in seen:
+                continue
+            seen.add(p)
+            try:
+                payload = json.loads(p.read_text(encoding="utf-8"))
+                results = payload.get("results") or []
+                backups_summary.append({"filename": p.name, "count": len(results)})
+            except Exception:  # pragma: no cover - defensive
+                backups_summary.append({"filename": p.name, "count": 0})
 
     hass.data[DOMAIN]["backups"] = backups_summary
 
@@ -350,9 +354,13 @@ async def async_restore_from_backup_service(call: ServiceCall) -> None:
         _LOGGER.warning("Refusing to restore from suspicious filename: %s", filename)
         return
 
-    backup_path = Path(hass.config.path("orphan_cleaner_backups", filename))
-    if not backup_path.exists() or not backup_path.is_file():
-        _LOGGER.warning("Backup file not found: %s", backup_path)
+    candidate_paths = [
+        Path(hass.config.path("orphan_cleaner_backups", filename)),
+        Path(hass.config.path(filename)),
+    ]
+    backup_path = next((p for p in candidate_paths if p.exists() and p.is_file()), None)
+    if backup_path is None:
+        _LOGGER.warning("Backup file not found for: %s", filename)
         return
 
     try:

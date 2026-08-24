@@ -1,0 +1,79 @@
+scan:
+  name: Scan for orphans
+  description: Scan the entity registry for orphaned entities.
+  fields:
+    strict_mode:
+      name: Strict mode
+      description: Flag platform-linked entities without a device as additional warnings.
+      example: false
+    min_orphan_age_hours:
+      name: Minimum orphan age
+      description: Only report entities as orphaned after this many hours.
+      example: 24
+    aggressive_heuristic:
+      name: Aggressive heuristic
+      description: Also flag long-disabled entities as potential orphans.
+      example: false
+
+clear_results:
+  name: Clear results
+  description: Clear the stored scan results.
+
+export_results:
+  name: Export results
+  description: Export the current scan results as JSON.
+
+backup_results:
+  name: Backup results
+  description: Create a JSON backup of the current scan results.
+
+delete_selected:
+  name: Delete selected entities
+  description: Delete selected orphaned entities after safety checks.
+  fields:
+    entity_ids:
+      name: Entity IDs
+      description: List of entity IDs to delete.
+      required: true
+      example:
+        - sensor.old_device
+        - switch.unused_switch
+    dry_run:
+      name: Dry run
+      description: Do not remove anything, only report what would be deleted.
+      example: false
+
+get_allowlist:
+  name: Get allowlist
+  description: Return the current protected entity allowlist.
+
+update_allowlist:
+  name: Update allowlist
+  description: Add or remove entity IDs from the protection allowlist.
+  fields:
+    entity_ids:
+      name: Entity IDs
+      description: Entities to add or remove from the allowlist.
+      required: true
+      example:
+        - zone.home
+        - person.me
+    mode:
+      name: Mode
+      description: Whether to add or remove entities.
+      required: true
+      example: add
+
+list_backups:
+  name: List backups
+  description: List all available backup files.
+
+restore_from_backup:
+  name: Restore from backup
+  description: Restore entity registry entries from a named backup file.
+  fields:
+    filename:
+      name: Backup filename
+      description: Name of the backup file in the orphan_cleaner_backups folder.
+      required: true
+      example: orphan_cleaner_backup_20260824T220000Z.json

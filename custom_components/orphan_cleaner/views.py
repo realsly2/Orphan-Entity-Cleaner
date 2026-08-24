@@ -1,6 +1,8 @@
 # custom_components/orphan_cleaner/views.py
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from aiohttp.web import Request, Response
 from homeassistant.components.http import HomeAssistantView
 
@@ -18,18 +20,44 @@ class OrphanCleanerResultsView(HomeAssistantView):
     name = "orphan_cleaner:api_results"
     requires_auth = True
 
+    @staticmethod
+    def _get_request_value(request: Request, key: str, default=None):
+        """Support both aiohttp request objects and lightweight test doubles."""
+        if hasattr(request, "get"):
+            value = request.get(key, default)
+        else:
+            value = getattr(request, key, default)
+        return value if value is not None else default
+
+    @staticmethod
+    def _get_hass(request: Request):
+        app = getattr(request, "app", {})
+        if isinstance(app, dict):
+            return app.get("hass")
+        return getattr(app, "hass", None)
+
+    @staticmethod
+    def _get_query(request: Request):
+        query = getattr(request, "query", {})
+        if query is None:
+            return {}
+        return query
+
     async def get(self, request: Request) -> Response:
         """GET /api/orphan_cleaner/results mit optionalen Query-Parametern."""
-        user = request.get("hass_user") if hasattr(request, "get") else None
-        if user is not None and not getattr(user, "is_admin", False):
+        user = self._get_request_value(request, "hass_user")
+        if user is None:
+            user = SimpleNamespace(is_admin=True)
+        if not user.is_admin:
             return self.json({"error": "Admin access required"}, status_code=403)
 
-        hass = request.app["hass"]
+        hass = self._get_hass(request)
         data = hass.data.get(DOMAIN, {})
         results = data.get(RESULTS_KEY, [])
+        query = self._get_query(request)
 
-        limit_str = request.query.get("limit")
-        offset_str = request.query.get("offset", "0")
+        limit_str = query.get("limit")
+        offset_str = query.get("offset", "0")
 
         try:
             offset = int(offset_str)
@@ -58,20 +86,23 @@ class OrphanCleanerResultsView(HomeAssistantView):
             "offset": offset,
             "limit": limit,
             "results": paginated_results,
-            "backups": data.get("backups", []),
-            "last_backup_path": data.get("last_backup_path"),
-            "last_restore": data.get("last_restore"),
         }
+
+        for key, value in data.items():
+            if key != RESULTS_KEY:
+                response_data[key] = value
 
         return self.json(response_data)
 
     async def delete(self, request: Request) -> Response:
         """DELETE /api/orphan_cleaner/results - Löscht alle Ergebnisse."""
-        user = request.get("hass_user") if hasattr(request, "get") else None
-        if user is not None and not getattr(user, "is_admin", False):
+        user = self._get_request_value(request, "hass_user")
+        if user is None:
+            user = SimpleNamespace(is_admin=True)
+        if not user.is_admin:
             return self.json({"error": "Admin access required"}, status_code=403)
 
-        hass = request.app["hass"]
+        hass = self._get_hass(request)
         data = hass.data.get(DOMAIN, {})
         data[RESULTS_KEY] = []
         return self.json({"message": "Results cleared"})

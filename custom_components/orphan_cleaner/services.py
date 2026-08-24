@@ -99,9 +99,11 @@ async def _async_write_backup(hass: HomeAssistant, results: list[dict],
     hass.data[DOMAIN][BACKUP_KEY] = payload
 
     filename = f"orphan_cleaner_backup_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json"
-    # Write backups into a dedicated subdirectory under the Home Assistant config path
-    backup_dir = Path(hass.config.path("orphan_cleaner_backups"))
-    target_path = backup_dir / filename
+    root_path = Path(hass.config.path())
+    backup_dir = root_path / "orphan_cleaner_backups"
+    backup_dir.mkdir(parents=True, exist_ok=True)
+    root_target = root_path / filename
+    subdir_target = backup_dir / filename
 
     def _write_file(path_str: str, text: str):
         p = Path(path_str)
@@ -109,11 +111,10 @@ async def _async_write_backup(hass: HomeAssistant, results: list[dict],
         p.write_text(text, encoding="utf-8")
 
     try:
-        await hass.async_add_executor_job(
-            _write_file,
-            str(target_path),
-            json.dumps(payload, indent=2, ensure_ascii=False),
-        )
+        serialized = json.dumps(payload, indent=2, ensure_ascii=False)
+        await hass.async_add_executor_job(_write_file, str(root_target), serialized)
+        await hass.async_add_executor_job(_write_file, str(subdir_target), serialized)
+        hass.data[DOMAIN]["last_backup_path"] = str(subdir_target)
         _LOGGER.info("Backup created: %s", filename)
     except OSError as err:
         _LOGGER.error("Failed to write backup file: %s", err)
@@ -170,20 +171,20 @@ async def async_delete_selected_service(call: ServiceCall) -> None:
             not_found.append(entity_id)
             continue
 
-        # 2. Allowlist prüfen
-        if entity_id in current_allowlist:
-            protected.append(entity_id)
-            _LOGGER.info("Protected by allowlist: %s", entity_id)
-            continue
-
-        # 3. Schutz durch config_entry_id (bestehend)
+        # 2. Schutz durch config_entry_id (bestehend)
         if entry.config_entry_id:
             protected.append(entity_id)
             _LOGGER.info("Protected by config_entry_id: %s", entity_id)
             continue
 
-        # 4. Prüfe, ob die Entität überhaupt zur Löschung vorgesehen ist (Scan oder aktueller Orphan-Status)
-        if entity_id not in deletable_ids and not current_is_orphan:
+        # 3. Allowlist prüfen - nur für Entitäten, die in der Scan-Ergebnisliste relevant sind
+        if entity_id in current_allowlist and (scan_result is not None or entity_id in deletable_ids):
+            protected.append(entity_id)
+            _LOGGER.info("Protected by allowlist: %s", entity_id)
+            continue
+
+        # 4. Prüfe, ob die Entität überhaupt zur Löschung vorgesehen ist (nur gemeldete Scan-Ergebnisse gelten)
+        if entity_id not in deletable_ids and scan_result is None:
             not_found.append(entity_id)
             continue
 

@@ -384,6 +384,10 @@ Voraussetzungen:
 Tests ausführen:
 pytest -q
 
+Die pytest-Konfiguration liegt in [pytest.ini](pytest.ini) und setzt `asyncio_default_fixture_loop_scope = function`, damit `pytest-asyncio` keine Deprecation-Warnung mehr auslöst.
+
+In der GitHub Actions-Workflow-Datei [.github/workflows/tests.yml](.github/workflows/tests.yml) wird derselbe Testlauf automatisch für Push und Pull Requests ausgeführt.
+
 Beiträge:
 1. Forke das Repository.
 2. Erstelle einen Feature-Branch.

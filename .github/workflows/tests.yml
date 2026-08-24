@@ -8,6 +8,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      PYTEST_ADDOPTS: "-o asyncio_default_fixture_loop_scope=function"
 
     steps:
       - uses: actions/checkout@v4

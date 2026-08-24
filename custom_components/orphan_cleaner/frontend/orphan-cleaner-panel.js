@@ -1,60 +1,11 @@
-// custom_components/orphan_cleaner/frontend/orphan-cleaner-panel.js
 //
 // Panel-Custom-Element für Orphan Cleaner.
 //
-// Wichtig: Home Assistant setzt auf dieses Element die Property `hass`
-// (nicht ein HTML-Attribut). Dieses hass-Objekt ist bereits authentifiziert -
-// hass.callService() / hass.callApi() hängen den Bearer-Token automatisch an.
-// Dadurch brauchen wir hier keine eigene fetch()/Token-Logik mehr, im
-// Unterschied zum vorherigen iframe-Ansatz (der still mit 401 gescheitert
-// wäre, da HAs /api/* Endpunkte weder Cookies noch unauthentifizierte
-// iframe-Navigation akzeptieren).
-
-const REASON_INFO = {
-  no_config_or_device: {
-    label: "Keine Verknüpfung",
-    badge: "⚠️ Prüfen",
-    badgeClass: "oc-badge-warn",
-    hint: "Kann bei YAML-Helfern, Template-Sensoren, Gruppen oder Zonen normal sein - die haben nie eine config_entry_id/device_id. Vor dem Löschen prüfen, ob der Entity-Name/die Domain dir bekannt vorkommt.",
-  },
-  platform_without_device: {
-    label: "Plattform ohne Geräte-ID",
-    badge: "⚠️ Prüfen",
-    badgeClass: "oc-badge-warn",
-    hint: "Zusatzwarnung aus dem strict_mode. Manche Integrationen legen bewusst kein Geräte-Objekt an - allein deswegen nicht automatisch löschen.",
-  },
-  disabled_long_term: {
-    label: "Lange deaktiviert",
-    badge: "🟠 Manuell deaktiviert",
-    badgeClass: "oc-badge-orange",
-    hint: "Du (oder jemand) hat diese Entität selbst deaktiviert. Das kann Absicht sein (z.B. saisonal pausiert) - vor dem Löschen kurz überlegen, warum sie deaktiviert wurde.",
-  },
-  pending_purge_by_ha: {
-    label: "Wird von HA entfernt",
-    badge: "✅ Kein Handlungsbedarf",
-    badgeClass: "oc-badge-ok",
-    hint: "Home Assistant hat diese Entität bereits selbst als gelöscht markiert und entfernt sie automatisch nach ca. 30 Tagen endgültig. Nicht über dieses Tool löschbar, rein informativ.",
-  },
-};
-
-function reasonInfo(code) {
-  return (
-    REASON_INFO[code] || {
-      label: code,
-      badge: "",
-      badgeClass: "",
-      hint: "",
-    }
-  );
-}
 
 class OrphanCleanerPanel extends HTMLElement {
   constructor() {
     super();
     this._results = [];
-    this._backups = [];
-    this._lastBackupPath = null;
-    this._lastRestore = null;
     this._built = false;
   }
 
@@ -82,8 +33,8 @@ class OrphanCleanerPanel extends HTMLElement {
         }
         .oc-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
         .oc-toolbar { margin-bottom: 12px; }
-        input, button, select { padding: 8px; font-size: 14px; }
-        input[type="text"] { min-width: 240px; }
+        input, button { padding: 8px; font-size: 14px; }
+        input[type="text"] { min-width: 280px; }
         table { width: 100%; border-collapse: collapse; margin-top: 12px; }
         th, td {
           border-bottom: 1px solid var(--divider-color, #ddd);
@@ -96,82 +47,27 @@ class OrphanCleanerPanel extends HTMLElement {
         .oc-danger { color: #b00020; }
         .oc-spacer { flex: 1; }
         .oc-small { font-size: 12px; }
-        .oc-badge {
-          display: inline-block;
-          padding: 2px 6px;
-          border-radius: 4px;
-          font-size: 12px;
-          white-space: nowrap;
-        }
-        .oc-badge-warn { background: #fff3cd; color: #7a5b00; }
-        .oc-badge-orange { background: #ffe0cc; color: #8a3d00; }
-        .oc-badge-ok { background: #d9f2df; color: #1e6b34; }
-        .oc-hint { display: block; font-size: 12px; color: var(--secondary-text-color, #666); margin-top: 2px; }
-        .oc-note {
-          background: var(--secondary-background-color, #f7f7f7);
-          border-left: 3px solid #93c5fd;
-          padding: 8px 12px;
-          margin-bottom: 12px;
-          font-size: 13px;
-        }
       </style>
       <div class="oc-wrap">
         <h2>Orphan Cleaner</h2>
-
-        <div class="oc-note">
-          Backups liegen als JSON im Unterordner
-          <code>orphan_cleaner_backups/</code> deines Home-Assistant-Konfigurationsordners
-          (also z.B. <code>/config/orphan_cleaner_backups/</code>), nicht direkt im
-          config-Root. Jede Backup-Datei enthält alle Infos, um die Entität bei Bedarf
-          wiederherzustellen. "Backups anzeigen" listet vorhandene Dateien auf, daneben
-          gibt es je Datei einen Restore-Button.
-        </div>
 
         <div class="oc-row oc-toolbar">
           <button id="oc-scan">Scan</button>
           <button id="oc-refresh">Refresh</button>
           <button id="oc-backup">Backup</button>
+          <button id="oc-download">Download Backup</button>
+          <button id="oc-restore">Restore Backup</button>
           <button id="oc-export">Export</button>
           <button id="oc-clear">Clear</button>
           <button id="oc-delete" class="oc-danger">Delete Selected</button>
-          <button id="oc-list-backups">Backups anzeigen</button>
-        </div>
-
-        <div id="oc-backups-section" style="display:none;">
-          <table>
-            <thead>
-              <tr>
-                <th>Datei</th>
-                <th>Zeitpunkt</th>
-                <th>Typ</th>
-                <th>Anzahl Einträge</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody id="oc-backups-body"></tbody>
-          </table>
-        </div>
-
-        <div id="oc-restore-status" class="oc-note" style="display:none;"></div>
-
-        <div class="oc-row oc-toolbar">
-          <input id="oc-q" type="text" placeholder="Suche: entity_id, name, platform" />
-          <select id="oc-reason-filter">
-            <option value="">Alle Gründe</option>
-            <option value="no_config_or_device">Keine Verknüpfung</option>
-            <option value="platform_without_device">Plattform ohne Geräte-ID</option>
-            <option value="disabled_long_term">Lange deaktiviert</option>
-            <option value="pending_purge_by_ha">Wird von HA entfernt</option>
-          </select>
-          <label class="oc-small">
-            <input type="checkbox" id="oc-hide-pending" /> "Wird von HA entfernt" ausblenden
-          </label>
+          <input type="file" id="oc-restore-file" accept=".json" style="display: none;" />
+          <span class="oc-spacer"></span>
+          <input id="oc-q" type="text" placeholder="Search entity_id, name, platform" />
         </div>
 
         <div class="oc-row oc-toolbar">
           <button id="oc-select-all">Select Visible</button>
           <button id="oc-unselect-all">Unselect Visible</button>
-          <span class="oc-spacer"></span>
           <span id="oc-status" class="oc-muted">Idle</span>
         </div>
 
@@ -182,13 +78,13 @@ class OrphanCleanerPanel extends HTMLElement {
     this.querySelector("#oc-scan").addEventListener("click", () => this._scan());
     this.querySelector("#oc-refresh").addEventListener("click", () => this._refreshResults());
     this.querySelector("#oc-backup").addEventListener("click", () => this._backup());
+    this.querySelector("#oc-download").addEventListener("click", () => this._downloadBackup());
+    this.querySelector("#oc-restore").addEventListener("click", () => this.querySelector("#oc-restore-file").click());
+    this.querySelector("#oc-restore-file").addEventListener("change", (e) => this._restoreBackup(e));
     this.querySelector("#oc-export").addEventListener("click", () => this._exportResults());
     this.querySelector("#oc-clear").addEventListener("click", () => this._clearResults());
     this.querySelector("#oc-delete").addEventListener("click", () => this._deleteSelected());
-    this.querySelector("#oc-list-backups").addEventListener("click", () => this._listBackups());
     this.querySelector("#oc-q").addEventListener("input", () => this._render());
-    this.querySelector("#oc-reason-filter").addEventListener("change", () => this._render());
-    this.querySelector("#oc-hide-pending").addEventListener("change", () => this._render());
     this.querySelector("#oc-select-all").addEventListener("click", () => this._selectVisible(true));
     this.querySelector("#oc-unselect-all").addEventListener("click", () => this._selectVisible(false));
   }
@@ -201,19 +97,29 @@ class OrphanCleanerPanel extends HTMLElement {
   _filtered() {
     const qInput = this.querySelector("#oc-q");
     const q = (qInput && qInput.value ? qInput.value : "").toLowerCase().trim();
-    const reasonFilter = this.querySelector("#oc-reason-filter").value;
-    const hidePending = this.querySelector("#oc-hide-pending").checked;
-
-    return this._results.filter((x) => {
-      if (hidePending && x.pending_purge) return false;
-      if (reasonFilter && !(x.orphaned_reason || []).includes(reasonFilter)) return false;
-      if (!q) return true;
-      return (
+    return this._results.filter(
+      (x) =>
+        !q ||
         (x.entity_id || "").toLowerCase().includes(q) ||
         (x.name || "").toLowerCase().includes(q) ||
         (x.platform || "").toLowerCase().includes(q)
-      );
-    });
+    );
+  }
+
+  _escapeHtml(value) {
+    return String(value ?? "").replace(/[&<>'"]/g, (character) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "'": "&#39;",
+      '"': "&quot;",
+    }[character]));
+  }
+
+  _entityLink(entityId) {
+    const escapedId = this._escapeHtml(entityId);
+    const href = `/config/entities/entity/${encodeURIComponent(entityId)}`;
+    return `<a href="${href}" target="_blank" rel="noopener" title="Entity in Home Assistant öffnen">${escapedId}</a>`;
   }
 
   _render() {
@@ -227,39 +133,26 @@ class OrphanCleanerPanel extends HTMLElement {
             <th>Entity</th>
             <th>Name</th>
             <th>Platform</th>
-            <th>Grund</th>
+            <th>Reason</th>
             <th>Config Entry ID</th>
             <th>Device ID</th>
           </tr>
         </thead>
         <tbody>
           ${rows
-            .map((x) => {
-              const reasons = x.orphaned_reason && x.orphaned_reason.length ? x.orphaned_reason : [x.reason];
-              const badges = reasons
-                .map((code) => {
-                  const info = reasonInfo(code);
-                  return `<span class="oc-badge ${info.badgeClass}" title="${info.hint}">${info.badge || info.label}</span>`;
-                })
-                .join(" ");
-              const hints = reasons
-                .map((code) => reasonInfo(code).hint)
-                .filter(Boolean);
-              return `
+            .map(
+              (x) => `
             <tr>
-              <td>${x.pending_purge ? "" : `<input type="checkbox" data-entity="${x.entity_id}">`}</td>
-              <td>${x.entity_id || ""}</td>
-              <td>${x.name || ""}</td>
-              <td>${x.platform || ""}</td>
-              <td>
-                ${badges}
-                ${hints[0] ? `<span class="oc-hint">${hints[0]}</span>` : ""}
-              </td>
-              <td class="oc-small">${x.config_entry_id || ""}</td>
-              <td class="oc-small">${x.device_id || ""}</td>
+              <td>${x.pending_purge ? "" : `<input type="checkbox" data-entity="${this._escapeHtml(x.entity_id)}">`}</td>
+              <td>${x.entity_id ? this._entityLink(x.entity_id) : ""}</td>
+              <td>${this._escapeHtml(x.name)}${x.pending_purge ? " <em>(wird von HA automatisch entfernt)</em>" : ""}</td>
+              <td>${this._escapeHtml(x.platform)}</td>
+              <td>${this._escapeHtml(x.reason)}</td>
+              <td class="oc-small">${this._escapeHtml(x.config_entry_id)}</td>
+              <td class="oc-small">${this._escapeHtml(x.device_id)}</td>
             </tr>
-          `;
-            })
+          `
+            )
             .join("")}
         </tbody>
       </table>`;
@@ -279,19 +172,10 @@ class OrphanCleanerPanel extends HTMLElement {
       const payload = await this.hass.callApi("GET", "orphan_cleaner/results");
       if (Array.isArray(payload)) {
         this._results = payload;
-        this._backups = [];
-        this._lastBackupPath = null;
-        this._lastRestore = null;
       } else if (payload && Array.isArray(payload.results)) {
         this._results = payload.results;
-        this._backups = payload.backups || [];
-        this._lastBackupPath = payload.last_backup_path || null;
-        this._lastRestore = payload.last_restore || null;
       } else {
         this._results = [];
-        this._backups = [];
-        this._lastBackupPath = null;
-        this._lastRestore = null;
       }
     } catch (err) {
       this._results = [];
@@ -299,9 +183,6 @@ class OrphanCleanerPanel extends HTMLElement {
       return;
     }
     this._render();
-    if (this._backups && this._backups.length) {
-      this._renderBackups();
-    }
   }
 
   async _scan() {
@@ -319,13 +200,70 @@ class OrphanCleanerPanel extends HTMLElement {
     this._setStatus("Backing up...");
     try {
       await this.hass.callService("orphan_cleaner", "backup_results", {});
-      await this._refreshResults();
-      this._setStatus(
-        this._lastBackupPath ? `Backup erstellt: ${this._lastBackupPath}` : "Backup created"
-      );
+      this._setStatus("Backup created");
     } catch (err) {
       this._setStatus(`Backup failed: ${err}`);
     }
+  }
+
+  async _downloadBackup() {
+    this._setStatus("Downloading backup...");
+    try {
+      const res = await this.hass.callWS({ type: "orphan_cleaner/download_backup" });
+      const dataStr = JSON.stringify(res.data, null, 2);
+      const blob = new Blob([dataStr], { type: "application/json" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = url;
+      a.download = res.filename || "orphan_cleaner_backup.json";
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      a.remove();
+      this._setStatus(`Downloaded: ${res.filename}`);
+    } catch (err) {
+      this._setStatus(`Download failed: ${err.message || err}`);
+    }
+  }
+
+  async _restoreBackup(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    this._setStatus("Reading restore file...");
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const jsonContent = JSON.parse(e.target.result);
+        const entities = Array.isArray(jsonContent) ? jsonContent : (jsonContent.results || jsonContent.entities || []);
+
+        if (!entities.length) {
+          this._setStatus("Restore failed: No entities found in file");
+          return;
+        }
+
+        const confirmed = window.confirm(`Restore ${entities.length} entities from backup file?`);
+        if (!confirmed) {
+          this._setStatus("Restore cancelled");
+          return;
+        }
+
+        this._setStatus("Restoring entities...");
+        const res = await this.hass.callWS({
+          type: "orphan_cleaner/restore_backup",
+          entities: entities,
+        });
+
+        this._setStatus(`Restore finished: ${res.restored} entities restored`);
+        await this._refreshResults();
+      } catch (err) {
+        this._setStatus(`Restore failed: ${err.message || err}`);
+      } finally {
+        event.target.value = "";
+      }
+    };
+    reader.readAsText(file);
   }
 
   async _exportResults() {
@@ -358,10 +296,7 @@ class OrphanCleanerPanel extends HTMLElement {
     }
 
     const confirmed = window.confirm(
-      `${ids.length} ausgewählte Entitäten löschen? Home Assistant verschiebt sie zunächst ` +
-        `für ca. 30 Tage in einen internen "gelöscht, wartet auf endgültiges Entfernen"-Zustand ` +
-        `(daher zusätzlich das Backup - sicherer Weg, um alle nötigen Infos für eine spätere ` +
-        `Wiederherstellung zu haben).`
+      `Delete ${ids.length} selected entities? This cannot be undone (except via backup).`
     );
     if (!confirmed) return;
 
@@ -373,79 +308,6 @@ class OrphanCleanerPanel extends HTMLElement {
       return;
     }
     await this._refreshResults();
-    if (this._lastBackupPath) {
-      this._setStatus(`Gelöscht. Backup: ${this._lastBackupPath}`);
-    }
-  }
-
-  async _listBackups() {
-    this._setStatus("Lade Backups...");
-    try {
-      await this.hass.callService("orphan_cleaner", "list_backups", {});
-    } catch (err) {
-      this._setStatus(`Backups laden fehlgeschlagen: ${err}`);
-      return;
-    }
-    await this._refreshResults();
-    this.querySelector("#oc-backups-section").style.display = "block";
-    this._renderBackups();
-    this._setStatus(`${(this._backups || []).length} Backup(s) gefunden`);
-  }
-
-  _renderBackups() {
-    const section = this.querySelector("#oc-backups-section");
-    const body = this.querySelector("#oc-backups-body");
-    if (!section || !body) return;
-
-    section.style.display = "block";
-    body.innerHTML = (this._backups || [])
-      .map(
-        (b) => `
-        <tr>
-          <td class="oc-small">${b.filename || ""}</td>
-          <td class="oc-small">${b.timestamp || ""}</td>
-          <td class="oc-small">${b.type || ""}</td>
-          <td class="oc-small">${b.count ?? ""}</td>
-          <td><button class="oc-restore-btn" data-filename="${b.filename}">Restore</button></td>
-        </tr>
-      `
-      )
-      .join("");
-
-    body.querySelectorAll(".oc-restore-btn").forEach((btn) => {
-      btn.addEventListener("click", () => this._restoreBackup(btn.dataset.filename));
-    });
-  }
-
-  async _restoreBackup(filename) {
-    const confirmed = window.confirm(
-      `Aus "${filename}" wiederherstellen? Es werden nur Entitäten erzeugt, die aktuell noch ` +
-        `nicht existieren - vorhandene Entitäten bleiben unangetastet. Zustandsverlauf, ` +
-        `Bereich und Icon werden dabei NICHT wiederhergestellt (nur entity_id, Name, ` +
-        `Plattform-Zuordnung).`
-    );
-    if (!confirmed) return;
-
-    this._setStatus("Stelle wieder her...");
-    try {
-      await this.hass.callService("orphan_cleaner", "restore_from_backup", { filename });
-    } catch (err) {
-      this._setStatus(`Restore failed: ${err}`);
-      return;
-    }
-    await this._refreshResults();
-    const restoreStatusEl = this.querySelector("#oc-restore-status");
-    if (this._lastRestore && restoreStatusEl) {
-      const r = this._lastRestore;
-      restoreStatusEl.style.display = "block";
-      restoreStatusEl.innerHTML =
-        `<strong>Restore-Ergebnis (${filename}):</strong> ` +
-        `${(r.restored || []).length} wiederhergestellt, ` +
-        `${(r.skipped_existing || []).length} übersprungen (existieren bereits), ` +
-        `${(r.errors || []).length} Fehler.` +
-        ((r.restored || []).length ? `<br>Wiederhergestellt: ${r.restored.join(", ")}` : "");
-    }
-    this._setStatus("Restore abgeschlossen");
   }
 }
 

@@ -3,6 +3,7 @@ from __future__ import annotations
 import glob
 import json
 import os
+import re
 import voluptuous as vol
 
 from homeassistant.components import websocket_api
@@ -16,6 +17,13 @@ from .services import async_register_services
 from .views import OrphanCleanerResultsView
 
 _SETUP_DONE_KEY = "_setup_done"
+_ENTITY_ID_PATTERN = re.compile(r"^[a-z0-9_]+\.[a-z0-9_]+$")
+
+
+def _is_admin(connection: websocket_api.ActiveConnection) -> bool:
+    """Prüft den Benutzer der WebSocket-Verbindung."""
+    user = getattr(connection, "user", None)
+    return user is not None and user.is_admin
 
 
 @websocket_api.websocket_command({
@@ -24,6 +32,10 @@ _SETUP_DONE_KEY = "_setup_done"
 @websocket_api.async_response
 async def ws_download_backup(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
     """Liest das aktuellste Backup aus /config/ aus und sendet es an das Frontend."""
+    if not _is_admin(connection):
+        connection.send_error(msg["id"], "unauthorized", "Admin access required")
+        return
+
     config_dir = hass.config.path()
     backup_files = glob.glob(os.path.join(config_dir, "orphan_cleaner_backup_*.json"))
 
@@ -57,6 +69,10 @@ async def ws_download_backup(hass: HomeAssistant, connection: websocket_api.Acti
 @websocket_api.async_response
 async def ws_restore_backup(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
     """Stellt Entitäten aus der hochgeladenen Backup-Datei in der Entity Registry wieder her."""
+    if not _is_admin(connection):
+        connection.send_error(msg["id"], "unauthorized", "Admin access required")
+        return
+
     registry = er.async_get(hass)
     entities = msg["entities"]
     restored_count = 0
@@ -69,7 +85,13 @@ async def ws_restore_backup(hass: HomeAssistant, connection: websocket_api.Activ
         platform = entity_data.get("platform")
         unique_id = entity_data.get("unique_id")
 
-        if not entity_id or "." not in entity_id or not platform:
+        if (
+            not isinstance(entity_id, str)
+            or not _ENTITY_ID_PATTERN.fullmatch(entity_id)
+            or not isinstance(platform, str)
+            or not platform
+            or (unique_id is not None and not isinstance(unique_id, str))
+        ):
             continue
 
         domain = entity_id.split(".", 1)[0]

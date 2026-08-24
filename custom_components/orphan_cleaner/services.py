@@ -7,7 +7,8 @@ import logging
 from pathlib import Path
 
 import voluptuous as vol
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 
 from .const import BACKUP_KEY, DOMAIN, EXPORT_KEY, LAST_DELETED_KEY, RESULTS_KEY
@@ -15,14 +16,37 @@ from .orphan_detector import async_find_orphans
 
 _LOGGER = logging.getLogger(__name__)
 
-# ===== NEU: Allowlist für geschützte Entitäten =====
-ALLOWLIST = {
+DEFAULT_ALLOWLIST = {
     "zone.home",
     "sun.sun",
     "binary_sensor.updater",
-    # Füge hier weitere Entitäten hinzu, die nie gelöscht werden sollen
-    # z.B. "person.ich", "person.me"
 }
+
+# Backwards-compatible alias used by older code/tests.
+ALLOWLIST = set(DEFAULT_ALLOWLIST)
+
+
+def get_allowlist(hass: HomeAssistant) -> set[str]:
+    """Return the allowlist for this instance, initialized from defaults if needed."""
+    hass.data.setdefault(DOMAIN, {})
+    stored = hass.data[DOMAIN].get("allowlist")
+    if stored is None:
+        hass.data[DOMAIN]["allowlist"] = sorted(DEFAULT_ALLOWLIST)
+        return set(DEFAULT_ALLOWLIST)
+    if isinstance(stored, set):
+        allowlist = stored
+    else:
+        allowlist = set(stored)
+    hass.data[DOMAIN]["allowlist"] = sorted(allowlist)
+    return allowlist
+
+
+def set_allowlist(hass: HomeAssistant, entity_ids: list[str]) -> list[str]:
+    """Persist a new allowlist value for this Home Assistant instance."""
+    allowlist = get_allowlist(hass)
+    allowlist.update(entity_ids)
+    hass.data[DOMAIN]["allowlist"] = sorted(allowlist)
+    return sorted(allowlist)
 
 
 async def async_scan_service(call: ServiceCall) -> None:
@@ -82,8 +106,9 @@ async def _async_write_backup(hass: HomeAssistant, results: list[dict],
             "utf-8",
         )
         _LOGGER.info("Backup created: %s", filename)
-    except Exception as e:
-        _LOGGER.error("Failed to write backup file: %s", e)
+    except OSError as err:
+        _LOGGER.error("Failed to write backup file: %s", err)
+        raise HomeAssistantError("Backup file could not be written") from err
 
 
 async def async_backup_results_service(call: ServiceCall) -> None:
@@ -99,13 +124,21 @@ async def async_delete_selected_service(call: ServiceCall) -> None:
     """Löscht ausgewählte Entitäten mit erweiterten Sicherheitschecks."""
     hass = call.hass
     entity_ids = call.data.get("entity_ids", [])
-    
+    dry_run = call.data.get("dry_run", False)
+
     if not entity_ids:
         _LOGGER.warning("No entity_ids provided for deletion.")
         return
 
     registry = er.async_get(hass)
-    
+    scan_results = hass.data.get(DOMAIN, {}).get(RESULTS_KEY, [])
+    current_allowlist = get_allowlist(hass)
+    deletable_ids = {
+        result["entity_id"]
+        for result in scan_results
+        if result.get("entity_id") and not result.get("pending_purge", False)
+    }
+
     # Ergebnisse für das Backup und die Rückmeldung sammeln
     backup_data = []
     deleted = []
@@ -115,24 +148,35 @@ async def async_delete_selected_service(call: ServiceCall) -> None:
 
     for entity_id in entity_ids:
         entry = registry.async_get(entity_id)
-        
+        scan_result = next(
+            (result for result in scan_results if result.get("entity_id") == entity_id),
+            None,
+        )
+        current_is_orphan = bool(
+            entry is not None and entry.config_entry_id is None and entry.device_id is None
+        )
+
+        if entity_id not in deletable_ids and not current_is_orphan:
+            not_found.append(entity_id)
+            continue
+
         # 1. Prüfe, ob die Entität existiert
         if entry is None:
             not_found.append(entity_id)
             continue
-        
-        # 2. Allowlist prüfen (NEU)
-        if entity_id in ALLOWLIST:
+
+        # 2. Allowlist prüfen
+        if entity_id in current_allowlist:
             protected.append(entity_id)
             _LOGGER.info("Protected by allowlist: %s", entity_id)
             continue
-        
+
         # 3. Schutz durch config_entry_id (bestehend)
         if entry.config_entry_id:
             protected.append(entity_id)
             _LOGGER.info("Protected by config_entry_id: %s", entity_id)
             continue
-        
+
         # 4. Backup-Daten sammeln
         backup_data.append({
             "entity_id": entry.entity_id,
@@ -141,7 +185,10 @@ async def async_delete_selected_service(call: ServiceCall) -> None:
             "config_entry_id": entry.config_entry_id,
             "device_id": entry.device_id,
         })
-        
+
+        if dry_run:
+            continue
+
         # 5. Löschversuch mit Fehlerbehandlung
         try:
             registry.async_remove(entity_id)
@@ -152,7 +199,7 @@ async def async_delete_selected_service(call: ServiceCall) -> None:
             _LOGGER.error("Failed to delete %s: %s", entity_id, e)
 
     # Backup erstellen (auch wenn nichts gelöscht wurde, für Transparenz)
-    if backup_data:
+    if backup_data and not dry_run:
         await _async_write_backup(hass, backup_data, backup_type="deletion")
     else:
         _LOGGER.info("No entities to back up for deletion.")
@@ -160,9 +207,11 @@ async def async_delete_selected_service(call: ServiceCall) -> None:
     # Ergebnisse speichern (für das Frontend)
     hass.data[DOMAIN][LAST_DELETED_KEY] = {
         "deleted": deleted,
+        "would_delete": [item["entity_id"] for item in backup_data] if dry_run else [],
         "protected": protected,
         "not_found": not_found,
         "errors": errors,
+        "dry_run": dry_run,
     }
     
     # Zusammenfassung loggen
@@ -172,13 +221,31 @@ async def async_delete_selected_service(call: ServiceCall) -> None:
     )
 
 
-# ===== NEU: Service zur Überprüfung der Allowlist =====
-async def async_get_allowlist_service(call: ServiceCall) -> None:
-    """Gibt die aktuelle Allowlist zurück (für Debugging)."""
+# ===== Service zur Überprüfung der Allowlist =====
+async def async_get_allowlist_service(call: ServiceCall) -> list[str]:
+    """Return the current allowlist as a normal service response."""
+    allowlist = sorted(get_allowlist(call.hass))
     hass = call.hass
     hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN]["allowlist"] = list(ALLOWLIST)
-    _LOGGER.info("Allowlist retrieved: %s", ALLOWLIST)
+    hass.data[DOMAIN]["allowlist"] = allowlist
+    _LOGGER.info("Allowlist retrieved: %s", allowlist)
+    return allowlist
+
+
+async def async_update_allowlist_service(call: ServiceCall) -> list[str]:
+    """Add or remove entities from the allowlist."""
+    hass = call.hass
+    entity_ids = call.data.get("entity_ids", [])
+    mode = call.data.get("mode", "add")
+    allowlist = set(get_allowlist(hass))
+
+    if mode == "remove":
+        allowlist.difference_update(entity_ids)
+    else:
+        allowlist.update(entity_ids)
+
+    hass.data[DOMAIN]["allowlist"] = sorted(allowlist)
+    return sorted(allowlist)
 
 
 def async_register_services(hass: HomeAssistant) -> None:
@@ -202,7 +269,25 @@ def async_register_services(hass: HomeAssistant) -> None:
         DOMAIN,
         "delete_selected",
         async_delete_selected_service,
-        schema=vol.Schema({vol.Required("entity_ids"): [str]}),
+        schema=vol.Schema({
+            vol.Required("entity_ids"): [str],
+            vol.Optional("dry_run", default=False): bool,
+        }),
     )
-    # NEU: Service für Allowlist
-    hass.services.async_register(DOMAIN, "get_allowlist", async_get_allowlist_service)
+    # Service für Allowlist
+    hass.services.async_register(
+        DOMAIN,
+        "get_allowlist",
+        async_get_allowlist_service,
+        supports_response=SupportsResponse.ONLY,
+    )
+    hass.services.async_register(
+        DOMAIN,
+        "update_allowlist",
+        async_update_allowlist_service,
+        schema=vol.Schema({
+            vol.Required("entity_ids"): [str],
+            vol.Optional("mode", default="add"): vol.In(["add", "remove"]),
+        }),
+        supports_response=SupportsResponse.ONLY,
+    )

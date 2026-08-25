@@ -19,6 +19,8 @@ def test_frontend_js_file_exists_and_is_nonempty():
     content = js_path.read_text(encoding="utf-8")
     assert "customElements.define(" in content
     assert "orphan-cleaner-panel" in content
+    assert "_describeError" in content
+    assert "orphan_cleaner/results API call in _refreshResults()" in content
 
 
 @pytest.mark.asyncio

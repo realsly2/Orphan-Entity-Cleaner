@@ -112,18 +112,59 @@ class OrphanCleanerPanel extends HTMLElement {
     if (typeof value === "string") return value;
     if (typeof value === "number" || typeof value === "boolean") return String(value);
     if (typeof value === "function") return value.name || "function";
-    if (depth > 2) return "[object]";
+    if (depth > 2) return "[truncated]";
     if (Array.isArray(value)) {
       return value.slice(0, 5).map((item) => this._stringifyErrorValue(item, depth + 1)).join(", ");
     }
     if (typeof value === "object") {
+      if (value instanceof Error) return value.message || value.toString();
+
       const entries = Object.entries(value).slice(0, 10);
-      if (!entries.length) return Object.prototype.toString.call(value);
+      if (!entries.length) {
+        try {
+          const json = JSON.stringify(value);
+          if (json && json !== "{}") return json;
+        } catch (err) {
+          // Ignore stringify failures and fall back to a readable generic value.
+        }
+        return "Unknown error";
+      }
+
       return `{ ${entries
         .map(([key, nested]) => `${key}: ${this._stringifyErrorValue(nested, depth + 1)}`)
         .join(", ")} }`;
     }
-    return String(value);
+
+    const str = String(value);
+    return Object.prototype.toString.call(value) === "[object Object]" || str === "[object Object]"
+      ? "Unknown error"
+      : str;
+  }
+
+  _describeError(error, origin = "unknown location") {
+    const summary = this._formatError(error);
+    const originText = typeof origin === "string" && origin.trim() ? origin : "unknown location";
+
+    const details = [];
+    if (error?.status) details.push(`status=${error.status}`);
+    if (error?.statusText) details.push(`statusText=${this._stringifyErrorValue(error.statusText, 0)}`);
+
+    const url = error?.url || error?.request?.url || error?.config?.url;
+    if (url) details.push(`url=${this._stringifyErrorValue(url, 0)}`);
+
+    const payload = error?.body ?? error?.details ?? error?.error ?? error?.response?.data ?? error?.data;
+    if (payload) details.push(`payload=${this._stringifyErrorValue(payload, 0)}`);
+
+    if (error?.stack) {
+      const stackLine = String(error.stack)
+        .split("\n")
+        .map((line) => line.trim())
+        .find((line) => line && !line.startsWith("Error:"));
+      if (stackLine) details.push(`stack=${stackLine}`);
+    }
+
+    const detailsText = details.length ? ` (${details.join(" | ")})` : "";
+    return `${summary} | origin: ${originText}${detailsText}`;
   }
 
   _formatError(error) {
@@ -136,11 +177,13 @@ class OrphanCleanerPanel extends HTMLElement {
 
     const message = error?.message || error?.error || error?.details;
     if (typeof message === "string" && message.trim()) return message;
+    if (message && typeof message === "object") return this._formatError(message);
 
     const body = error?.body;
     if (body) {
       if (typeof body === "string" && body.trim()) return body;
       if (body.error) return this._formatError(body.error);
+      if (body.message) return this._formatError(body.message);
       return this._stringifyErrorValue(body);
     }
 
@@ -238,7 +281,8 @@ class OrphanCleanerPanel extends HTMLElement {
       }
     } catch (err) {
       this._results = [];
-      this._setStatus(`Error loading results: ${this._formatError(err)}`);
+      const origin = "orphan_cleaner/results API call in _refreshResults()";
+      this._setStatus(`Error loading results: ${this._describeError(err, origin)}`);
       return;
     }
     this._render();

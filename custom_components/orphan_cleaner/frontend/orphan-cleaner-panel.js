@@ -31,6 +31,8 @@ class OrphanCleanerPanel extends HTMLElement {
           padding: 16px;
           color: var(--primary-text-color, #222);
         }
+        /* Make entity links white instead of the default blue */
+        .oc-wrap a, .oc-wrap a:visited { color: #ffffff; }
         .oc-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
         .oc-toolbar { margin-bottom: 12px; }
         input, button { padding: 8px; font-size: 14px; }

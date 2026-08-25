@@ -1,0 +1,7 @@
+[flake8]
+max-line-length = 120
+extend-ignore = E203, W503
+exclude = .git,__pycache__,build,dist,venv,.venv,custom_components/*/__pycache__
+
+# Per-file-ignores can be added here if necessary
+# per-file-ignores =

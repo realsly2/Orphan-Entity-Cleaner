@@ -235,17 +235,21 @@ async def async_delete_selected_service(call: ServiceCall) -> None:
 
 
 # ===== Service zur Überprüfung der Allowlist =====
-async def async_get_allowlist_service(call: ServiceCall) -> list[str]:
+from typing import Any, Dict
+
+
+async def async_get_allowlist_service(call: ServiceCall) -> Dict[str, Any]:
     """Return the current allowlist as a normal service response."""
     allowlist = sorted(get_allowlist(call.hass))
     hass = call.hass
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN]["allowlist"] = allowlist
     _LOGGER.info("Allowlist retrieved: %s", allowlist)
-    return allowlist
+    # Return a dict to satisfy Home Assistant's typed service response shape
+    return {"allowlist": allowlist}
 
 
-async def async_update_allowlist_service(call: ServiceCall) -> list[str]:
+async def async_update_allowlist_service(call: ServiceCall) -> Dict[str, Any]:
     """Add or remove entities from the allowlist."""
     hass = call.hass
     entity_ids = call.data.get("entity_ids", [])
@@ -258,7 +262,7 @@ async def async_update_allowlist_service(call: ServiceCall) -> list[str]:
         allowlist.update(entity_ids)
 
     hass.data[DOMAIN]["allowlist"] = sorted(allowlist)
-    return sorted(allowlist)
+    return {"allowlist": sorted(allowlist)}
 
 
 def async_register_services(hass: HomeAssistant) -> None:
@@ -349,7 +353,9 @@ async def async_restore_from_backup_service(call: ServiceCall) -> None:
     """
     hass = call.hass
     hass.data.setdefault(DOMAIN, {})
-    filename = (call.data or {}).get("filename")
+    # Be explicit about the expected data typing to satisfy type checkers
+    data: dict[str, Any] = call.data or {}
+    filename = data.get("filename")
     if not filename or Path(filename).name != filename or ".." in filename:
         _LOGGER.warning("Refusing to restore from suspicious filename: %s", filename)
         return

@@ -80,7 +80,7 @@ class FakeCall:
 class FakeRequest:
     def __init__(self, hass: FakeHass, is_admin: bool):
         self.app = {"hass": hass}
-        self.query = {}
+        self.query: dict[str, Any] = {}
         self._hass_user = SimpleNamespace(is_admin=is_admin)
 
     def get(self, key: str, default=None):

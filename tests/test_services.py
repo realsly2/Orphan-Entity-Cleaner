@@ -158,7 +158,17 @@ async def test_delete_selected_creates_backup_before_removal(monkeypatch, tmp_pa
 
     async def fake_write_backup(hass_arg, results, backup_type="deletion"):
         calls.append("backup")
-        assert results == [{"entity_id": "sensor.delete", "name": "sensor.delete", "platform": "unknown", "config_entry_id": None, "device_id": None, "unique_id": "fake-unique-id", "domain": "sensor"}]
+        assert results == [
+            {
+                "entity_id": "sensor.delete",
+                "name": "sensor.delete",
+                "platform": "unknown",
+                "config_entry_id": None,
+                "device_id": None,
+                "unique_id": "fake-unique-id",
+                "domain": "sensor",
+            }
+        ]
 
     def fake_remove(entity_id):
         calls.append("remove")

@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 import json
 import logging
 from pathlib import Path
+from typing import Any, Dict
 
 import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
@@ -87,8 +88,7 @@ async def async_export_results_service(call: ServiceCall) -> None:
 
 
 # ===== NEU: Verbesserte Backup-Funktion mit Fehlerbehandlung =====
-async def _async_write_backup(hass: HomeAssistant, results: list[dict], 
-                              backup_type: str = "deletion") -> None:
+async def _async_write_backup(hass: HomeAssistant, results: list[dict], backup_type: str = "deletion") -> None:
     """Erstellt ein Backup mit Metadaten."""
     payload = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
@@ -235,7 +235,6 @@ async def async_delete_selected_service(call: ServiceCall) -> None:
 
 
 # ===== Service zur Überprüfung der Allowlist =====
-from typing import Any, Dict
 
 
 async def async_get_allowlist_service(call: ServiceCall) -> Dict[str, Any]:
@@ -268,8 +267,8 @@ async def async_update_allowlist_service(call: ServiceCall) -> Dict[str, Any]:
 def async_register_services(hass: HomeAssistant) -> None:
     """Registriert alle Services mit erweiterten Schemas."""
     hass.services.async_register(
-        DOMAIN, 
-        "scan", 
+        DOMAIN,
+        "scan",
         async_scan_service,
         schema=vol.Schema({
             vol.Optional("strict_mode", default=False): bool,

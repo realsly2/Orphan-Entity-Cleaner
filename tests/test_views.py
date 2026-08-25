@@ -35,7 +35,7 @@ async def test_results_view_supports_mapping_like_app(fake_hass):
     class MappingApp(dict):
         pass
 
-    request = SimpleNamespace(app=MappingApp(hass=fake_hass), query={})
+    request = SimpleNamespace(app=MappingApp(hass=fake_hass), query={}, user=SimpleNamespace(is_admin=True))
     response = await view.get(request)
     payload = json.loads(response.body)
 
@@ -46,7 +46,7 @@ async def test_results_view_supports_mapping_like_app(fake_hass):
 async def test_results_view_delete_clears_results(fake_hass):
     fake_hass.data = {DOMAIN: {RESULTS_KEY: [{"entity_id": "sensor.test"}]}}
     view = OrphanCleanerResultsView()
-    request = SimpleNamespace(app={"hass": fake_hass}, query={})
+    request = SimpleNamespace(app={"hass": fake_hass}, query={}, user=SimpleNamespace(is_admin=True))
 
     await view.delete(request)
 

@@ -18,7 +18,7 @@ def test_results_view_url():
 async def test_results_view_reads_results(fake_hass):
     fake_hass.data = {DOMAIN: {RESULTS_KEY: [{"entity_id": "sensor.test"}]}}
     view = OrphanCleanerResultsView()
-    request = SimpleNamespace(app={"hass": fake_hass}, query={})
+    request = SimpleNamespace(app={"hass": fake_hass}, query={}, user=SimpleNamespace(is_admin=True))
 
     response = await view.get(request)
     payload = json.loads(response.body)
@@ -64,7 +64,7 @@ async def test_results_view_includes_backup_and_restore_info(fake_hass):
         }
     }
     view = OrphanCleanerResultsView()
-    request = SimpleNamespace(app={"hass": fake_hass}, query={})
+    request = SimpleNamespace(app={"hass": fake_hass}, query={}, user=SimpleNamespace(is_admin=True))
 
     response = await view.get(request)
     payload = json.loads(response.body)

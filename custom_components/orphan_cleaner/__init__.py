@@ -39,8 +39,35 @@ def _find_latest_backup_path(hass: HomeAssistant) -> str | None:
     if not backup_files:
         return None
 
-    backup_files = sorted(set(backup_files), key=os.path.getctime, reverse=True)
-    return backup_files[0]
+    # Prefer parsing timestamp from filename (newer format includes timestamp and UUID)
+    import datetime as _dt
+    import re as _re
+
+    parsed: list[tuple[_dt.datetime, str]] = []
+    pattern = _re.compile(r"orphan_cleaner_backup_(\d{8}T\d{6}\d{0,6}Z)_(?:[0-9a-fA-F]+)\.json$")
+
+    for fp in set(backup_files):
+        m = pattern.search(fp)
+        dt_obj = None
+        if m:
+            ts = m.group(1)
+            # Try parsing microsecond precision first then fall back
+            for fmt in ("%Y%m%dT%H%M%S%fZ", "%Y%m%dT%H%M%SZ"):
+                try:
+                    dt_obj = _dt.datetime.strptime(ts, fmt).replace(tzinfo=_dt.timezone.utc)
+                    break
+                except Exception:
+                    continue
+        if dt_obj is None:
+            try:
+                ctime = _dt.datetime.fromtimestamp(os.path.getctime(fp), tz=_dt.timezone.utc)
+                dt_obj = ctime
+            except Exception:
+                dt_obj = _dt.datetime.min.replace(tzinfo=_dt.timezone.utc)
+        parsed.append((dt_obj, fp))
+
+    parsed.sort(key=lambda x: x[0], reverse=True)
+    return parsed[0][1]
 
 
 @websocket_api.websocket_command({

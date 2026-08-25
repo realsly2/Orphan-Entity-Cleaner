@@ -51,9 +51,10 @@ class OrphanCleanerResultsView(HomeAssistantView):
                 if user is not None:
                     return bool(getattr(user, "is_admin", False))
 
-        # Backwards-compatible fallback for older stubs/tests that do not inject
-        # an explicit HA user object. Real HA requests always provide one.
-        return True
+        # Do NOT fall back permissively. If there's no explicit user info,
+        # treat the request as non-admin. Real HA requests should always provide
+        # a user object; permissive behavior is a security risk.
+        return False
 
     async def get(self, request: Request) -> Response:
         """GET /api/orphan_cleaner/results mit optionalen Query-Parametern."""

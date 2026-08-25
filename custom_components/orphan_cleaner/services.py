@@ -98,22 +98,31 @@ async def _async_write_backup(hass: HomeAssistant, results: list[dict], backup_t
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][BACKUP_KEY] = payload
 
-    filename = f"orphan_cleaner_backup_{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.json"
+    import uuid
+
+    # Use high-resolution UTC timestamp plus a UUID suffix to avoid collisions
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    filename = f"orphan_cleaner_backup_{timestamp}_{uuid.uuid4().hex}.json"
     root_path = Path(hass.config.path())
     backup_dir = root_path / "orphan_cleaner_backups"
     backup_dir.mkdir(parents=True, exist_ok=True)
     root_target = root_path / filename
     subdir_target = backup_dir / filename
 
-    def _write_file(path_str: str, text: str):
+    def _atomic_write_file(path_str: str, text: str):
         p = Path(path_str)
         p.parent.mkdir(parents=True, exist_ok=True)
-        p.write_text(text, encoding="utf-8")
+        tmp = p.with_suffix(".tmp")
+        tmp.write_text(text, encoding="utf-8")
+        # Use rename which is atomic on most OSes when target on same filesystem
+        tmp.replace(p)
 
     try:
         serialized = json.dumps(payload, indent=2, ensure_ascii=False)
-        await hass.async_add_executor_job(_write_file, str(root_target), serialized)
-        await hass.async_add_executor_job(_write_file, str(subdir_target), serialized)
+        # Write only into the backup subdirectory (avoid writing directly into root by default)
+        await hass.async_add_executor_job(_atomic_write_file, str(subdir_target), serialized)
+        # Also keep a copy in the config root for compatibility with older expectations
+        await hass.async_add_executor_job(_atomic_write_file, str(root_target), serialized)
         hass.data[DOMAIN]["last_backup_path"] = str(subdir_target)
         _LOGGER.info("Backup created: %s", filename)
     except OSError as err:
